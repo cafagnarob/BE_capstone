@@ -37,9 +37,9 @@ public class MotorcycleModel {
     private Integer yearEnd;
 
     @Column(nullable = false)
-    private int horsePower;
+    private Integer horsePower;
 
-    private int weightKg;
+    private Integer weightKg;
 
     private String imageUrl;
 
@@ -51,8 +51,8 @@ public class MotorcycleModel {
             MotorcycleCategory category,
             int yearStart,
             Integer yearEnd,
-            int horsePower,
-            int weightKg,
+            Integer horsePower,
+            Integer weightKg,
             String imageUrl
     ) {
         this.brand = brand;
