@@ -25,8 +25,9 @@ public class Brand {
     @Setter
     private String name;
 
-    //@Column(length = 500)
-    //private String logoUrl;
+    @Column(length = 500)
+    @Setter
+    private String logoUrl;
 
     @OneToMany(
             mappedBy = "brand",
@@ -38,6 +39,6 @@ public class Brand {
 
     public Brand(String name, String logoUrl) {
         this.name = name;
-        //this.logoUrl = logoUrl;
+        this.logoUrl = logoUrl;
     }
 }
