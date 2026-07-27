@@ -3,6 +3,7 @@ package robertoCafagna.BE_capstone.entities;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
@@ -49,6 +50,7 @@ public class Event {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    @Setter
     private EventStatus status;
 
     @Column(nullable = false)
@@ -69,6 +71,31 @@ public class Event {
     @ToString.Exclude
     private List<Participation> participants = new ArrayList<>();
 
+
+    public Event(
+            User organizer,
+            String title,
+            String description,
+            LocalDateTime startDateTime,
+            LocalDateTime endDateTime,
+            Double meetingPointLat,
+            Double meetingPointLng,
+            int maxParticipants,
+            EventVisibility visibility,
+            String accessCode
+    ) {
+        this.organizer = organizer;
+        this.title = title;
+        this.description = description;
+        this.startDateTime = startDateTime;
+        this.endDateTime = endDateTime;
+        this.meetingPointLat = meetingPointLat;
+        this.meetingPointLng = meetingPointLng;
+        this.maxParticipants = maxParticipants;
+        this.visibility = visibility;
+        this.accessCode = accessCode;
+        this.status = EventStatus.ACTIVE;
+    }
 
     @PrePersist
     private void beforeInsert() {
