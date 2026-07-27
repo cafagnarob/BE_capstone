@@ -117,7 +117,7 @@ public class User implements UserDetails {
     @PrePersist
     private void beforeInsert() {
         createdAt = LocalDateTime.now();
-        active = false;
+        active = true;
     }
 
 
