@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import robertoCafagna.BE_capstone.enums.RideType;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ public class Ride {
     @ToString.Exclude
     private Vehicle vehicle;
 
+    @Column(length = 100)
     private String title;
 
     @Column(nullable = false)
@@ -42,10 +44,10 @@ public class Ride {
     private Double distanceKm;
 
     @Column
-    private Double avgSpeed;
+    private Double avgSpeedKmH;
 
     @Column
-    private Double maxSpeed;
+    private Double maxSpeedKmH;
 
     @Column
     private int stopsCount;
@@ -53,7 +55,7 @@ public class Ride {
     @Column
     private int totalStopDurationSeconds;
 
-    @Column
+    @Column(length = 1000)
     private String notes;
 
     @OneToMany(
@@ -67,6 +69,45 @@ public class Ride {
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Enumerated(EnumType.STRING)
+    private RideType type;
+
+    // inizio viaggio
+    public Ride(
+            User user,
+            Vehicle vehicle,
+            String title
+    ) {
+        this.user = user;
+        this.vehicle = vehicle;
+        this.title = title;
+
+        this.startedAt = LocalDateTime.now();
+
+        this.distanceKm = 0.0;
+        this.avgSpeedKmH = 0.0;
+        this.maxSpeedKmH = 0.0;
+        this.stopsCount = 0;
+        this.totalStopDurationSeconds = 0;
+    }
+
+    // fine viaggio
+    public void finishRide(
+            LocalDateTime endedAt,
+            Double distanceKm,
+            Double avgSpeed,
+            Double maxSpeed,
+            int stopsCount,
+            int totalStopDurationSeconds
+    ) {
+        this.endedAt = endedAt;
+        this.distanceKm = distanceKm;
+        this.avgSpeedKmH = avgSpeed;
+        this.maxSpeedKmH = maxSpeed;
+        this.stopsCount = stopsCount;
+        this.totalStopDurationSeconds = totalStopDurationSeconds;
+    }
 
     @PrePersist
     private void beforeInsert() {
