@@ -87,6 +87,11 @@ public class User implements UserDetails {
     @ToString.Exclude
     private List<Notification> notifications = new ArrayList<>();
 
+    @OneToMany(mappedBy = "user")
+    @JsonIgnore
+    @ToString.Exclude
+    private List<Participation> participations = new ArrayList<>();
+
 
     public User(String username, String name, String surname,
                 String email, String password, String profilePicture) {
