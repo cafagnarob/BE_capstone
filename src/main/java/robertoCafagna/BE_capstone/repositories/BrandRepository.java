@@ -12,5 +12,5 @@ public interface BrandRepository
         extends JpaRepository<Brand, UUID> {
     Optional<Brand> findByName(String name);
 
-    boolean existByName(String name);
+    boolean existsByName(String name);
 }

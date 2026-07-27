@@ -3,6 +3,7 @@ package robertoCafagna.BE_capstone.entities;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ public class Brand {
 
 
     @Column(nullable = false, unique = true)
+    @Setter
     private String name;
 
     @Column(length = 500)
