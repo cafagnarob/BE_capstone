@@ -1,7 +1,9 @@
 package robertoCafagna.BE_capstone.exceptions;
 
+import java.util.UUID;
+
 public class NotFoundException extends RuntimeException {
-    public NotFoundException(long id) {
+    public NotFoundException(UUID id) {
         super("Il record con id " + id + " non è stato trovato");
     }
 
