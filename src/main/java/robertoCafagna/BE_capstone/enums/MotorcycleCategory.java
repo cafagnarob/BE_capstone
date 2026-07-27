@@ -5,5 +5,9 @@ public enum MotorcycleCategory {
     ADVENTURE,
     SPORT_TOURING,
     ENDURO,
-    CRUISER
+    CRUISER,
+    SPORT,
+    TOURING,
+    CUSTOM,
+    SCOOTER,
 }
