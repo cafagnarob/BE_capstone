@@ -7,6 +7,8 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -22,7 +24,7 @@ public class UserProfile {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @Column
+    @Column(length = 500)
     @Setter
     private String description;
 
@@ -34,15 +36,28 @@ public class UserProfile {
     @Setter
     private LocalDate birthDate;
 
-    @Column
-    @Setter
-    private String webSite;
+    @OneToMany(
+            mappedBy = "profile",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @ToString.Exclude
+    private List<ProfileLink> links = new ArrayList<>();
 
     public UserProfile(String description, String location,
-                       LocalDate birthDate, String webSite) {
+                       LocalDate birthDate) {
         this.description = description;
         this.location = location;
         this.birthDate = birthDate;
-        this.webSite = webSite;
+    }
+
+    public void addLink(ProfileLink link) {
+        links.add(link);
+        link.setProfile(this);
+    }
+
+    public void removeLink(ProfileLink link) {
+        links.remove(link);
+        link.setProfile(null);
     }
 }
