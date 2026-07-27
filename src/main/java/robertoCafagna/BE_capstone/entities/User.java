@@ -6,13 +6,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import robertoCafagna.BE_capstone.enums.Role;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +21,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @ToString
+@Table(name = "users")
 public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -47,10 +48,10 @@ public class User implements UserDetails {
     @Setter
     private String password;
 
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
+    @Column
     @Setter
     private LocalDateTime lastLogin;
 
@@ -66,6 +67,26 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "follower")
+    @ToString.Exclude
+    private List<FollowingRelationship> following = new ArrayList<>();
+
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "followedUser")
+    @ToString.Exclude
+    private List<FollowingRelationship> followers = new ArrayList<>();
+
+    @JsonIgnore
+    @OneToMany(
+            mappedBy = "user",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @ToString.Exclude
+    private List<Notification> notifications = new ArrayList<>();
+
 
     public User(String username, String name, String surname,
                 String email, String password, String profilePicture) {
@@ -74,11 +95,17 @@ public class User implements UserDetails {
         this.surname = surname;
         this.email = email;
         this.password = password;
-        this.createdAt = LocalDateTime.now();
         this.lastLogin = null;
-        this.active = false;
+        // TODO aggiungere foto di default
         this.profilePicture = profilePicture;
+        // TODO aggiungere foto di default
         this.role = Role.USER;
+    }
+
+    @PrePersist
+    private void beforeInsert() {
+        createdAt = LocalDateTime.now();
+        active = false;
     }
 
 
@@ -88,7 +115,7 @@ public class User implements UserDetails {
     }
 
     @Override
-    public @Nullable String getPassword() {
+    public String getPassword() {
         return password;
     }
 
