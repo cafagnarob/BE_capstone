@@ -28,6 +28,7 @@ public class MotorcycleModel {
     @Column(nullable = false)
     private int engineCc;
 
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private MotorcycleCategory category;
 
@@ -42,4 +43,26 @@ public class MotorcycleModel {
 
     private String imageUrl;
 
+
+    public MotorcycleModel(
+            Brand brand,
+            String name,
+            int engineCc,
+            MotorcycleCategory category,
+            int yearStart,
+            Integer yearEnd,
+            int horsePower,
+            int weightKg,
+            String imageUrl
+    ) {
+        this.brand = brand;
+        this.name = name;
+        this.engineCc = engineCc;
+        this.category = category;
+        this.yearStart = yearStart;
+        this.yearEnd = yearEnd;
+        this.horsePower = horsePower;
+        this.weightKg = weightKg;
+        this.imageUrl = imageUrl;
+    }
 }
