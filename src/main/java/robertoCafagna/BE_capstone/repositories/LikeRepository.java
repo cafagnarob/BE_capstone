@@ -8,4 +8,15 @@ import java.util.UUID;
 
 @Repository
 public interface LikeRepository extends JpaRepository<Like, UUID> {
+    boolean existsByUserIdAndPostId(
+            UUID userId,
+            UUID postId
+    );
+
+    void deleteByUserIdAndPostId(
+            UUID userId,
+            UUID postId
+    );
+
+    long countByPostId(UUID postId);
 }
