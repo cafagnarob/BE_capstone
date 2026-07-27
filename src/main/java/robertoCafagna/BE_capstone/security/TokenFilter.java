@@ -43,6 +43,7 @@ public class TokenFilter extends OncePerRequestFilter {
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 throw new UnauthorizedException("Per favore inserisci il token nell'header di autorizzazione.");
             }
+
             String accessToken = authHeader.substring(7);
 
             jwtTools.verifyToken(accessToken);
@@ -50,6 +51,12 @@ public class TokenFilter extends OncePerRequestFilter {
             String id = jwtTools.extractIdFromToken(accessToken);
             User currentUtente = userRepository.findById(UUID.fromString(id))
                     .orElseThrow(() -> new UnauthorizedException("Utente associato al token non trovato!"));
+
+            if (!currentUtente.isActive()) {
+                throw new UnauthorizedException(
+                        "Account disattivato"
+                );
+            }
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(currentUtente, null, currentUtente.getAuthorities());
