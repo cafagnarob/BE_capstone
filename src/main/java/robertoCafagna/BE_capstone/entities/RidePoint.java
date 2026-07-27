@@ -64,4 +64,4 @@ public class RidePoint {
         this.altitude = altitude;
         this.recordedAt = recordedAt;
     }
-} 
+}
