@@ -14,4 +14,9 @@ public interface MotorcycleModelRepository
     List<MotorcycleModel> findByBrandId(UUID brandId);
 
     List<MotorcycleModel> findByNameContainingIgnoreCase(String name);
+
+    boolean existsByBrandIdAndName(
+            UUID brandId,
+            String name
+    );
 }
