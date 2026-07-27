@@ -26,6 +26,7 @@ public class Brand {
     private String name;
 
     @Column(length = 500)
+    @Setter
     private String logoUrl;
 
     @OneToMany(

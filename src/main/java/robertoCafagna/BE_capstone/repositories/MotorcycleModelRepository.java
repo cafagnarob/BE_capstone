@@ -19,4 +19,6 @@ public interface MotorcycleModelRepository
             UUID brandId,
             String name
     );
+
+    boolean existsByBrandName(String brandName);
 }
