@@ -38,11 +38,11 @@ public class Notification {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-
+//todo ---------------
     // dovrei aggiungere il riferimento all'evento, post, foto, commento, ecc ecc
     //@Column
     //private UUID referenceId;
-
+//todo ---------------
 
     public Notification(User user, NotificationType type, String message) {
         this.user = user;
