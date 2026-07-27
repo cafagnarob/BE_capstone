@@ -44,7 +44,6 @@ public class JWTTools {
         }
     }
 
-
     public String extractIdFromToken(String token) {
         return Jwts.parser()
                 .verifyWith(getSecretKey())
