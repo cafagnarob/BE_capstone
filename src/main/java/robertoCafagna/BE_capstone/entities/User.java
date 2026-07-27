@@ -31,11 +31,11 @@ public class User implements UserDetails {
     @Setter
     private String username;
 
-    @Column(nullable = false)
+    @Column
     @Setter
     private String name;
 
-    @Column(nullable = false)
+    @Column
     @Setter
     private String surname;
 
@@ -67,6 +67,11 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @OneToOne(mappedBy = "user",
+            cascade = CascadeType.ALL)
+    @JsonIgnore
+    private UserProfile profile;
+
     @JsonIgnore
     @OneToMany(mappedBy = "follower")
     @ToString.Exclude
@@ -93,20 +98,18 @@ public class User implements UserDetails {
     private List<Participation> participations = new ArrayList<>();
 
     @OneToOne
+    @JsonIgnore
     @JoinColumn(name = "current_vehicle_id")
     private Vehicle currentVehicle;
 
 
-    public User(String username, String name, String surname,
-                String email, String password, String profilePicture) {
+    public User(String username, String email,
+                String password) {
         this.username = username;
-        this.name = name;
-        this.surname = surname;
         this.email = email;
         this.password = password;
-        this.lastLogin = null;
         // TODO aggiungere foto di default
-        this.profilePicture = profilePicture;
+        this.profilePicture = "default/pic";
         // TODO aggiungere foto di default
         this.role = Role.USER;
     }
