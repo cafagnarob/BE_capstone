@@ -92,6 +92,10 @@ public class User implements UserDetails {
     @ToString.Exclude
     private List<Participation> participations = new ArrayList<>();
 
+    @OneToOne
+    @JoinColumn(name = "current_vehicle_id")
+    private Vehicle currentVehicle;
+
 
     public User(String username, String name, String surname,
                 String email, String password, String profilePicture) {
