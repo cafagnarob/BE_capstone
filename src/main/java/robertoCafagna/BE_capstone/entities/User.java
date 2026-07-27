@@ -10,7 +10,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import robertoCafagna.BE_capstone.enums.TipoRuolo;
+import robertoCafagna.BE_capstone.enums.Role;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -64,7 +64,7 @@ public class User implements UserDetails {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private TipoRuolo ruolo;
+    private Role role;
 
 
     public User(String username, String name, String surname,
@@ -78,13 +78,13 @@ public class User implements UserDetails {
         this.lastLogin = null;
         this.active = false;
         this.profilePicture = profilePicture;
-        this.ruolo = TipoRuolo.USER;
+        this.role = Role.USER;
     }
 
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + ruolo.name()));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     @Override
