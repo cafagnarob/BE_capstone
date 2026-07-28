@@ -7,6 +7,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.*;
@@ -36,6 +37,7 @@ public class EventService {
     private final ParticipationRepository participationRepository;
     private final EventInviteRepository eventInviteRepository;
     private final EventAccessChecker eventAccessChecker;
+    private final PasswordEncoder passwordEncoder;
 
 
     @Transactional
@@ -55,7 +57,8 @@ public class EventService {
                 body.startDateTime(), body.endDateTime(),
                 body.meetingPointLat(), body.meetingPointLng(),
                 body.maxParticipants(), body.visibility(),
-                body.visibility() == EventVisibility.PRIVATE_CODE ? body.accessCode() : null,
+                body.visibility() == EventVisibility.PRIVATE_CODE ?
+                        passwordEncoder.encode(body.accessCode()) : null,
                 autoApprove
         );
 
