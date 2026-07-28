@@ -7,10 +7,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import robertoCafagna.BE_capstone.entities.User;
+import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.UserRepository;
+import robertoCafagna.BE_capstone.repositories.VehicleRepository;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -22,6 +25,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
+    private final VehicleRepository vehicleRepository;
+
 
     public User findById(UUID id) {
         return userRepository.findById(id)
@@ -47,17 +52,45 @@ public class UserService {
         log.info("Utente {} eliminato", id);
     }
 
+    @Transactional
+    public String updateProfilePicture(User currentUser, MultipartFile file) {
+        String contentType = file.getContentType();
 
-    public User updateProfilePicture(UUID userId, MultipartFile file) {
-        User user = findById(userId);
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new BadRequestException(
+                    "Il file deve essere un'immagine"
+            );
+        }
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new BadRequestException(
+                    "Immagine troppo grande"
+            );
+        }
+        if (file.isEmpty()) {
+            throw new BadRequestException("Il file è vuoto");
+        }
+
+        String oldPublicId = currentUser.getProfilePicturePublicId();
+        CloudinaryService.UploadResult result;
+
         try {
-            String imageUrl = cloudinaryService.uploadImage(file, "riders-app/users/profile");
-            user.setProfilePicture(imageUrl);
-            return userRepository.save(user);
-
+            result = cloudinaryService.uploadImage(file, "riders-app/users/profile");
         } catch (IOException e) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Errore durante il caricamento immagine");
         }
+        currentUser.setProfilePicture(result.url());
+        currentUser.setProfilePicturePublicId(result.publicId());
+        userRepository.save(currentUser);
+
+        if (oldPublicId != null) {
+            try {
+                cloudinaryService.deleteImage(oldPublicId);
+            } catch (IOException e) {
+                log.warn("Impossibile cancellare la vecchia immagine profilo {} per l'utente {}", oldPublicId, currentUser.getId(), e);
+            }
+        }
+        return result.url();
     }
 }
+
