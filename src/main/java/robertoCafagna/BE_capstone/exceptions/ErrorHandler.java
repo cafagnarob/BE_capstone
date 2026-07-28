@@ -1,12 +1,17 @@
 package robertoCafagna.BE_capstone.exceptions;
 
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import robertoCafagna.BE_capstone.DTO.ErrorDTO;
+import robertoCafagna.BE_capstone.DTO.ErrorListDTO;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @RestControllerAdvice
 public class ErrorHandler {
@@ -35,5 +40,26 @@ public class ErrorHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorDTO handleUnauthorized(UnauthorizedException ex) {
         return new ErrorDTO(ex.getMessage(), LocalDateTime.now());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorListDTO handleValidation(MethodArgumentNotValidException ex) {
+        List<String> errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .toList();
+        return new ErrorListDTO("Errori di validazione", LocalDateTime.now(), errors);
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorListDTO handleValidation(ValidationException ex) {
+        return new ErrorListDTO(ex.getMessage(), LocalDateTime.now(), ex.getErrorsList());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorDTO handleAccessDenied(AccessDeniedException ex) {
+        return new ErrorDTO("Non hai i permessi per accedere a questa risorsa", LocalDateTime.now());
     }
 }
