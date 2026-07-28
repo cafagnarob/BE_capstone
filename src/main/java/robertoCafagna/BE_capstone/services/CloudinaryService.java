@@ -19,7 +19,8 @@ public class CloudinaryService {
         this.cloudinary = cloudinary;
     }
 
-    public String uploadImage(MultipartFile file, String folder) throws IOException {
+
+    public UploadResult uploadImage(MultipartFile file, String folder) throws IOException {
         if (file.isEmpty()) {
             throw new BadRequestException("File vuoto");
         }
@@ -37,9 +38,10 @@ public class CloudinaryService {
                                 "folder", folder
                         )
                 );
-        return risultato
-                .get("secure_url")
-                .toString();
+        return new UploadResult(
+                risultato.get("secure_url").toString(),
+                risultato.get("public_id").toString()
+        );
     }
 
     public void deleteImage(String publicId)
