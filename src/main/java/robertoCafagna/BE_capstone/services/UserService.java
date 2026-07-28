@@ -35,7 +35,7 @@ public class UserService {
 
     public User findByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new NotFoundException("l'utente" + username + "non è stato trovato"));
+                .orElseThrow(() -> new NotFoundException("l'utente " + username + " non è stato trovato"));
     }
 
     public Page<User> getAll(int page, int size, String orderBy) {
