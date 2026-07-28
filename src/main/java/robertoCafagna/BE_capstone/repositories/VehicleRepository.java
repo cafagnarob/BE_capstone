@@ -18,5 +18,7 @@ public interface VehicleRepository
             UUID userId
     );
 
+    boolean existsByLicensePlate(String licensePlate);
+
 
 }
