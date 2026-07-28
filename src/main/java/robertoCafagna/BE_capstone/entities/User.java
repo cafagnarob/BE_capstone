@@ -70,6 +70,7 @@ public class User implements UserDetails {
     @OneToOne(mappedBy = "user",
             cascade = CascadeType.ALL)
     @JsonIgnore
+    @Setter
     private UserProfile profile;
 
     @JsonIgnore
@@ -99,8 +100,13 @@ public class User implements UserDetails {
 
     @OneToOne
     @JsonIgnore
+    @Setter
     @JoinColumn(name = "current_vehicle_id")
     private Vehicle currentVehicle;
+
+    @Column
+    @Setter
+    private String profilePicturePublicId;
 
 
     public User(String username, String email,
