@@ -7,111 +7,69 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import robertoCafagna.BE_capstone.DTO.BrandResponseDTO;
+import robertoCafagna.BE_capstone.DTO.MotorcycleModelResponseDTO;
+import robertoCafagna.BE_capstone.entities.Brand;
 import robertoCafagna.BE_capstone.entities.MotorcycleModel;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
-import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.MotorcycleModelRepository;
 
-
-import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class MotorcycleModelService {
+
+    private static final Set<String> ALLOWED_SORT_FIELDS =
+            Set.of("name", "engineCc", "yearStart", "horsePower", "weightKg");
+
     private final MotorcycleModelRepository motorcycleModelRepository;
-    private final BrandService brandService;
 
-    public MotorcycleModel findById(UUID id) {
-        return motorcycleModelRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Modello moto non trovato")
-                );
+    private Pageable buildPageable(int page, int size, String orderBy) {
+        if (size <= 0 || size > 50) size = 20;
+        if (page < 0) page = 0;
+        if (!ALLOWED_SORT_FIELDS.contains(orderBy)) {
+            throw new BadRequestException(
+                    "Campo di ordinamento non valido. Valori ammessi: " + ALLOWED_SORT_FIELDS
+            );
+        }
+        return PageRequest.of(page, size, Sort.by(orderBy));
     }
 
+    public Page<MotorcycleModelResponseDTO> getAll(int page, int size, String orderBy) {
+        Pageable pageable = buildPageable(page, size, orderBy);
+        return motorcycleModelRepository.findAll(pageable).map(this::toDTO);
+    }
 
-    public Page<MotorcycleModel> getAll(int page, int size, String orderBy) {
-        if (size <= 0 || size > 20) {
-            size = 10;
-        }
-        if (page < 0) {
-            page = 0;
-        }
-        if (orderBy == null || orderBy.isBlank()) {
-            orderBy = "name";
-        }
-        Pageable pageable = PageRequest.of(page, size, Sort.by(orderBy)
+    public Page<MotorcycleModelResponseDTO> getByBrand(UUID brandId, int page, int size, String orderBy) {
+        Pageable pageable = buildPageable(page, size, orderBy);
+        return motorcycleModelRepository.findByBrandId(brandId, pageable).map(this::toDTO);
+    }
+
+    public Page<MotorcycleModelResponseDTO> search(String name, int page, int size, String orderBy) {
+        Pageable pageable = buildPageable(page, size, orderBy);
+        return motorcycleModelRepository.findByNameContainingIgnoreCase(name, pageable).map(this::toDTO);
+    }
+
+    private MotorcycleModelResponseDTO toDTO(MotorcycleModel model) {
+        return new MotorcycleModelResponseDTO(
+                model.getId(),
+                toBrandDTO(model.getBrand()),
+                model.getName(),
+                model.getEngineCc(),
+                model.getCategory(),
+                model.getYearStart(),
+                model.getYearEnd(),
+                model.getHorsePower(),
+                model.getWeightKg(),
+                model.getImageUrl()
         );
-        return motorcycleModelRepository.findAll(pageable);
     }
 
-    public MotorcycleModel save(
-            MotorcycleModel model
-    ) {
-        if (model.getName() == null || model.getName().isBlank()) {
-            throw new BadRequestException("Nome modello obbligatorio");
-        }
-        if (model.getBrand() == null) {
-            throw new BadRequestException(
-                    "Il brand è obbligatorio"
-            );
-        }
-        if (model.getEngineCc() <= 0) {
-            throw new BadRequestException(
-                    "La cilindrata deve essere maggiore di zero"
-            );
-        }
-        if (model.getCategory() == null) {
-            throw new BadRequestException(
-                    "Categoria obbligatoria"
-            );
-        }
-        if (model.getHorsePower() <= 0) {
-            throw new BadRequestException(
-                    "La potenza deve essere maggiore di zero"
-            );
-        }
-        if (model.getWeightKg() <= 0) {
-            throw new BadRequestException(
-                    "Il peso deve essere maggiore di zero"
-            );
-        }
-        if (model.getYearStart() < 1900) {
-
-            throw new BadRequestException(
-                    "Anno di produzione non valido"
-            );
-        }
-        if (model.getYearEnd() != null &&
-                model.getYearEnd() < model.getYearStart()) {
-
-            throw new BadRequestException(
-                    "L'anno finale non può essere precedente all'anno iniziale"
-            );
-        }
-        if (motorcycleModelRepository.existsByBrandIdAndName(model.getBrand().getId(), model.getName())
-        ) {
-            throw new BadRequestException(
-                    "Modello già presente per questo brand"
-            );
-        }
-        return motorcycleModelRepository.save(model);
-    }
-
-
-    public List<MotorcycleModel> findByBrand(UUID brandId) {
-        return motorcycleModelRepository.findByBrandId(brandId);
-    }
-
-
-    public List<MotorcycleModel> searchByName(String name) {
-        return motorcycleModelRepository.findByNameContainingIgnoreCase(name);
-    }
-
-
-    public void delete(UUID id) {
-        MotorcycleModel model = findById(id);
-        motorcycleModelRepository.delete(model);
+    private BrandResponseDTO toBrandDTO(Brand brand) {
+        return new BrandResponseDTO(brand.getId(), brand.getName(), brand.getLogoUrl());
     }
 
 }
