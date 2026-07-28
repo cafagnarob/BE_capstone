@@ -44,17 +44,14 @@ public class UserService {
     public void delete(UUID id) {
         User indFromDB = this.findById(id);
         this.userRepository.delete(indFromDB);
-        log.info(
-                "Utente {} eliminato",
-                id
-        );
+        log.info("Utente {} eliminato", id);
     }
+
 
     public User updateProfilePicture(UUID userId, MultipartFile file) {
         User user = findById(userId);
         try {
             String imageUrl = cloudinaryService.uploadImage(file, "riders-app/users/profile");
-
             user.setProfilePicture(imageUrl);
             return userRepository.save(user);
 
