@@ -53,16 +53,14 @@ public class AuthService {
         );
 
         User user = (User) authentication.getPrincipal();
-
-        assert user != null;
-        user.setLastLogin(LocalDateTime.now());
-        userRepository.save(user);
-
         if (!user.isActive()) {
             throw new BadRequestException(
                     "Account non attivo"
             );
         }
+        user.setLastLogin(LocalDateTime.now());
+        userRepository.save(user);
+        
 
         String token = jwtTools.createToken(user);
         return new AuthResponseDTO(token);
