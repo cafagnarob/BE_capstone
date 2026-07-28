@@ -36,6 +36,10 @@ public class Brand {
     @ToString.Exclude
     private List<MotorcycleModel> models = new ArrayList<>();
 
+    @Column
+    @Setter
+    private String logoPublicId;
+
 
     public Brand(String name, String logoUrl) {
         this.name = name;
