@@ -3,6 +3,7 @@ package robertoCafagna.BE_capstone.entities;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 
@@ -35,6 +36,7 @@ public class Participation {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Setter
     private ParticipationStatus status;
 
     @Column(nullable = false)
@@ -45,6 +47,13 @@ public class Participation {
         this.event = event;
         this.user = user;
         this.status = ParticipationStatus.PENDING;
+        this.joinedAt = LocalDateTime.now();
+    }
+
+    public Participation(Event event, User user, ParticipationStatus status) {
+        this.event = event;
+        this.user = user;
+        this.status = status;
         this.joinedAt = LocalDateTime.now();
     }
 }

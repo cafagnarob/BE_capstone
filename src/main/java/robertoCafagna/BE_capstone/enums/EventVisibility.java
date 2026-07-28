@@ -2,5 +2,6 @@ package robertoCafagna.BE_capstone.enums;
 
 public enum EventVisibility {
     PUBLIC,
-    PRIVATE
+    PRIVATE_CODE,
+    INVITE_ONLY
 }

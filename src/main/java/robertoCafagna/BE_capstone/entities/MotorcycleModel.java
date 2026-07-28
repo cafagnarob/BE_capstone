@@ -53,6 +53,9 @@ public class MotorcycleModel {
     @Setter
     private String imageUrl;
 
+    @Setter
+    private String imagePublicId;
+
 
     public MotorcycleModel(
             Brand brand,
