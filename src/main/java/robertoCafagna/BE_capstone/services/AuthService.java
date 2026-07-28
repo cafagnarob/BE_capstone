@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import robertoCafagna.BE_capstone.DTO.AuthResponseDTO;
 import robertoCafagna.BE_capstone.DTO.LoginRequestDTO;
 import robertoCafagna.BE_capstone.DTO.RegisterRequestDTO;
+import robertoCafagna.BE_capstone.config.DefaultImageConfig;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.repositories.UserRepository;
@@ -24,24 +25,25 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JWTTools jwtTools;
     private final AuthenticationManager authenticationManager;
+    private final DefaultImageConfig defaultImageConfig;
 
     public String register(RegisterRequestDTO body) {
         if (userRepository.existsByUsername(body.username())) {
             throw new BadRequestException("Username già in uso!");
-
         }
         if (userRepository.existsByEmail(body.email())) {
             throw new BadRequestException("Email già in uso!");
         }
 
-        User user = new User(
-                body.username(),
-                body.email(),
+        User user = new User(body.username(), body.email(),
                 passwordEncoder.encode(body.password())
         );
 
-        userRepository.save(user);
+        user.setProfilePicture(
+                defaultImageConfig.getDefaultAvatar()
+        );
 
+        userRepository.save(user);
         return "Utente registrato con successo";
     }
 
@@ -49,6 +51,7 @@ public class AuthService {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(body.username(), body.password())
         );
+
         User user = (User) authentication.getPrincipal();
 
         assert user != null;
