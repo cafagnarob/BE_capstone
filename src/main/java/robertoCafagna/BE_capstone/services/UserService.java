@@ -2,14 +2,14 @@ package robertoCafagna.BE_capstone.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import robertoCafagna.BE_capstone.DTO.*;
 import robertoCafagna.BE_capstone.entities.User;
+import robertoCafagna.BE_capstone.entities.UserProfile;
+import robertoCafagna.BE_capstone.entities.Vehicle;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.UserRepository;
@@ -26,59 +26,103 @@ public class UserService {
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
     private final VehicleRepository vehicleRepository;
+    private final PasswordEncoder passwordEncoder;
 
 
-    public User findById(UUID id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException(id));
+    // --- lettura ---
+
+    public MyProfileResponseDTO getMyProfile(User currentUser) {
+        return toMyProfileDTO(currentUser);
     }
 
-    public User findByUsername(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new NotFoundException("l'utente " + username + " non è stato trovato"));
+    public PublicProfileResponseDTO getPublicProfile(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("L'utente " + username + " non è stato trovato"));
+        return toPublicProfileDTO(user);
     }
 
-    public Page<User> getAll(int page, int size, String orderBy) {
-        if (size > 20) size = 20;
-        if (size < 0) size = 10;
-        if (page < 0) page = 0;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(orderBy));
-        return this.userRepository.findAll(pageable);
+
+    // --- modifica profilo "social" ---
+
+    @Transactional
+    public MyProfileResponseDTO updateProfile(User currentUser, UpdateProfileRequestDTO body) {
+        if (body.name() != null) currentUser.setName(body.name());
+        if (body.surname() != null) currentUser.setSurname(body.surname());
+
+        UserProfile profile = currentUser.getProfile();
+        if (profile == null) {
+            profile = new UserProfile(body.description(), body.location(), body.birthDate());
+            profile.setUser(currentUser);
+            currentUser.setProfile(profile);
+        } else {
+            if (body.description() != null) profile.setDescription(body.description());
+            if (body.location() != null) profile.setLocation(body.location());
+            if (body.birthDate() != null) profile.setBirthDate(body.birthDate());
+        }
+
+        userRepository.save(currentUser);
+        return toMyProfileDTO(currentUser);
     }
 
-    public void delete(UUID id) {
-        User indFromDB = this.findById(id);
-        this.userRepository.delete(indFromDB);
-        log.info("Utente {} eliminato", id);
+    // --- credenziali: ognuna con la propria conferma password ---
+
+    @Transactional
+    public void changePassword(User currentUser, ChangePasswordRequestDTO body) {
+        if (!passwordEncoder.matches(body.oldPassword(), currentUser.getPassword())) {
+            throw new BadRequestException("La password attuale non è corretta");
+        }
+        currentUser.setPassword(passwordEncoder.encode(body.newPassword()));
+        userRepository.save(currentUser);
     }
+
+
+    @Transactional
+    public MyProfileResponseDTO updateUsername(User currentUser, UpdateUsernameRequestDTO body) {
+        if (!passwordEncoder.matches(body.currentPassword(), currentUser.getPassword())) {
+            throw new BadRequestException("Password non corretta");
+        }
+        if (body.newUsername().equals(currentUser.getUsername())) {
+            throw new BadRequestException("Il nuovo username coincide con quello attuale");
+        }
+        if (userRepository.existsByUsername(body.newUsername())) {
+            throw new BadRequestException("Username già in uso");
+        }
+        currentUser.setUsername(body.newUsername());
+        userRepository.save(currentUser);
+        return toMyProfileDTO(currentUser);
+    }
+
+
+    @Transactional
+    public MyProfileResponseDTO updateEmail(User currentUser, UpdateEmailRequestDTO body) {
+        if (!passwordEncoder.matches(body.currentPassword(), currentUser.getPassword())) {
+            throw new BadRequestException("Password non corretta");
+        }
+        if (body.newEmail().equalsIgnoreCase(currentUser.getEmail())) {
+            throw new BadRequestException("La nuova email coincide con quella attuale");
+        }
+        if (userRepository.existsByEmail(body.newEmail())) {
+            throw new BadRequestException("Email già in uso");
+        }
+        currentUser.setEmail(body.newEmail());
+        userRepository.save(currentUser);
+        return toMyProfileDTO(currentUser);
+    }
+
+
+    // --- immagine profilo ---
 
     @Transactional
     public String updateProfilePicture(User currentUser, MultipartFile file) {
-        String contentType = file.getContentType();
-
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new BadRequestException(
-                    "Il file deve essere un'immagine"
-            );
-        }
-        if (file.getSize() > 5 * 1024 * 1024) {
-            throw new BadRequestException(
-                    "Immagine troppo grande"
-            );
-        }
-        if (file.isEmpty()) {
-            throw new BadRequestException("Il file è vuoto");
-        }
-
         String oldPublicId = currentUser.getProfilePicturePublicId();
-        CloudinaryService.UploadResult result;
 
+        CloudinaryService.UploadResult result;
         try {
             result = cloudinaryService.uploadImage(file, "riders-app/users/profile");
         } catch (IOException e) {
-            throw new BadRequestException(
-                    "Errore durante il caricamento immagine");
+            throw new BadRequestException("Errore durante il caricamento dell'immagine");
         }
+
         currentUser.setProfilePicture(result.url());
         currentUser.setProfilePicturePublicId(result.publicId());
         userRepository.save(currentUser);
@@ -87,10 +131,65 @@ public class UserService {
             try {
                 cloudinaryService.deleteImage(oldPublicId);
             } catch (IOException e) {
-                log.warn("Impossibile cancellare la vecchia immagine profilo {} per l'utente {}", oldPublicId, currentUser.getId(), e);
+                log.warn("Impossibile cancellare la vecchia immagine profilo {} per l'utente {}",
+                        oldPublicId, currentUser.getId(), e);
             }
         }
+
         return result.url();
     }
+
+    // --- account ---
+
+    @Transactional
+    public void deactivateAccount(User currentUser) {
+        currentUser.setActive(false);
+        userRepository.save(currentUser);
+    }
+
+
+    // --- garage ---
+
+    @Transactional
+    public MyProfileResponseDTO selectVehicle(User currentUser, UUID vehicleId) {
+        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Veicolo non trovato nel tuo garage"));
+        currentUser.setCurrentVehicle(vehicle);
+        userRepository.save(currentUser);
+        return toMyProfileDTO(currentUser);
+    }
+
+
+    // --- mapping privati ---
+
+    private VehicleSummaryDTO toVehicleSummary(Vehicle vehicle) {
+        if (vehicle == null) return null;
+        return new VehicleSummaryDTO(vehicle.getId(), vehicle.getNickname(), vehicle.getPhotoUrl());
+    }
+
+    private MyProfileResponseDTO toMyProfileDTO(User user) {
+        UserProfile profile = user.getProfile();
+        return new MyProfileResponseDTO(
+                user.getId(), user.getUsername(), user.getName(), user.getSurname(), user.getEmail(),
+                user.getProfilePicture(),
+                profile != null ? profile.getDescription() : null,
+                profile != null ? profile.getLocation() : null,
+                profile != null ? profile.getBirthDate() : null,
+                user.getCreatedAt(), user.getLastLogin(), user.isActive(),
+                toVehicleSummary(user.getCurrentVehicle())
+        );
+    }
+
+    private PublicProfileResponseDTO toPublicProfileDTO(User user) {
+        UserProfile profile = user.getProfile();
+        return new PublicProfileResponseDTO(
+                user.getUsername(), user.getName(), user.getSurname(), user.getProfilePicture(),
+                profile != null ? profile.getDescription() : null,
+                profile != null ? profile.getLocation() : null,
+                toVehicleSummary(user.getCurrentVehicle())
+        );
+    }
+
+
 }
 
