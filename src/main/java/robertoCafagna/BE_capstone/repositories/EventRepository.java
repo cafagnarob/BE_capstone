@@ -8,6 +8,7 @@ import robertoCafagna.BE_capstone.entities.Event;
 import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,4 +19,6 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     Page<Event> findByVisibilityAndStatus(EventVisibility visibility, EventStatus status, Pageable pageable);
 
     Page<Event> findByVisibilityInAndStatus(List<EventVisibility> visibilities, EventStatus status, Pageable pageable);
+
+    List<Event> findByStatusAndEndDateTimeBefore(EventStatus status, LocalDateTime dateTime);
 }
