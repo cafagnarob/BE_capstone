@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.JoinEventRequestDTO;
 import robertoCafagna.BE_capstone.DTO.ParticipationResponseDTO;
+import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.entities.Event;
 import robertoCafagna.BE_capstone.entities.Participation;
 import robertoCafagna.BE_capstone.entities.User;
@@ -28,6 +29,7 @@ public class EventParticipationService {
 
     private final EventRepository eventRepository;
     private final ParticipationRepository participationRepository;
+    private final EventAccessChecker eventAccessChecker;
 
     @Transactional
     public ParticipationResponseDTO join(User currentUser, UUID eventId, JoinEventRequestDTO body) {
@@ -117,6 +119,18 @@ public class EventParticipationService {
             throw new UnauthorizedException("Non sei l'organizzatore di questo evento");
         }
         return participationRepository.findByEventIdAndStatus(eventId, ParticipationStatus.PENDING)
+                .stream().map(this::toDTO).toList();
+    }
+
+    public List<ParticipationResponseDTO> getAcceptedParticipants(User currentUser, UUID eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Evento non trovato"));
+
+        if (!eventAccessChecker.canSeeDetail(currentUser, event)) {
+            throw new UnauthorizedException("Non hai accesso ai partecipanti di questo evento");
+        }
+
+        return participationRepository.findByEventIdAndStatus(eventId, ParticipationStatus.ACCEPTED)
                 .stream().map(this::toDTO).toList();
     }
 
