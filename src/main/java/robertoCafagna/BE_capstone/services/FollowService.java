@@ -3,6 +3,10 @@ package robertoCafagna.BE_capstone.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.FollowStatsDTO;
@@ -14,13 +18,14 @@ import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.FollowingRelationshipRepository;
 import robertoCafagna.BE_capstone.repositories.UserRepository;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class FollowService {
 
+
+    private static final int MAX_PAGE_SIZE = 50;
+    private static final int DEFAULT_PAGE_SIZE = 20;
     private final FollowingRelationshipRepository followingRelationshipRepository;
     private final UserRepository userRepository;
 
@@ -56,25 +61,24 @@ public class FollowService {
         log.info("Utente {} ha smesso di seguire {}", currentUser.getId(), target.getId());
     }
 
-    public List<FollowUserSummaryDTO> getFollowers(String username) {
+    public Page<FollowUserSummaryDTO> getFollowers(String username, int page, int size) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new NotFoundException("Utente " + username + " non trovato"));
 
-        return followingRelationshipRepository.findByFollowedUserId(user.getId())
-                .stream()
-                .map(r -> toSummaryDTO(r.getFollower()))
-                .toList();
+        Pageable pageable = buildPageable(page, size);
+        return followingRelationshipRepository.findByFollowedUserId(user.getId(), pageable)
+                .map(r -> toSummaryDTO(r.getFollower()));
     }
 
-    public List<FollowUserSummaryDTO> getFollowing(String username) {
+    public Page<FollowUserSummaryDTO> getFollowing(String username, int page, int size) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new NotFoundException("Utente " + username + " non trovato"));
 
-        return followingRelationshipRepository.findByFollowerId(user.getId())
-                .stream()
-                .map(r -> toSummaryDTO(r.getFollowedUser()))
-                .toList();
+        Pageable pageable = buildPageable(page, size);
+        return followingRelationshipRepository.findByFollowerId(user.getId(), pageable)
+                .map(r -> toSummaryDTO(r.getFollowedUser()));
     }
+
 
     public FollowStatsDTO getStats(User currentUser, String username) {
         User user = userRepository.findByUsername(username)
@@ -86,6 +90,12 @@ public class FollowService {
                 .existsByFollowerIdAndFollowedUserId(currentUser.getId(), user.getId());
 
         return new FollowStatsDTO(followers, following, isFollowed);
+    }
+
+    private Pageable buildPageable(int page, int size) {
+        if (size <= 0 || size > MAX_PAGE_SIZE) size = DEFAULT_PAGE_SIZE;
+        if (page < 0) page = 0;
+        return PageRequest.of(page, size, Sort.by("createdAt").descending());
     }
 
     private FollowUserSummaryDTO toSummaryDTO(User user) {
