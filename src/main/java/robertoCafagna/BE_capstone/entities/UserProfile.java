@@ -22,6 +22,7 @@ public class UserProfile {
     @OneToOne
     @MapsId
     @JoinColumn(name = "user_id")
+    @Setter
     private User user;
 
     @Column(length = 500)
