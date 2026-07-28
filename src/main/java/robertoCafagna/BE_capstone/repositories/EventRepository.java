@@ -1,5 +1,7 @@
 package robertoCafagna.BE_capstone.repositories;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import robertoCafagna.BE_capstone.entities.Event;
@@ -13,7 +15,7 @@ import java.util.UUID;
 public interface EventRepository extends JpaRepository<Event, UUID> {
     List<Event> findByOrganizerId(UUID userId);
 
-    List<Event> findByVisibility(EventVisibility visibility);
+    Page<Event> findByVisibilityAndStatus(EventVisibility visibility, EventStatus status, Pageable pageable);
 
-    List<Event> findByStatus(EventStatus status);
+    Page<Event> findByVisibilityInAndStatus(List<EventVisibility> visibilities, EventStatus status, Pageable pageable);
 }
