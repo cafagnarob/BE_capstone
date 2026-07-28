@@ -7,10 +7,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.UserRepository;
 
+import java.io.IOException;
 import java.util.UUID;
 
 @Service
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService;
 
     public User findById(UUID id) {
         return userRepository.findById(id)
@@ -45,5 +48,19 @@ public class UserService {
                 "Utente {} eliminato",
                 id
         );
+    }
+
+    public User updateProfilePicture(UUID userId, MultipartFile file) {
+        User user = findById(userId);
+        try {
+            String imageUrl = cloudinaryService.uploadImage(file, "riders-app/users/profile");
+
+            user.setProfilePicture(imageUrl);
+            return userRepository.save(user);
+
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "Errore durante il caricamento immagine");
+        }
     }
 }
