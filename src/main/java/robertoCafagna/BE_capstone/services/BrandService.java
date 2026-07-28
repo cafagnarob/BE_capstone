@@ -2,15 +2,13 @@ package robertoCafagna.BE_capstone.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import robertoCafagna.BE_capstone.DTO.BrandResponseDTO;
 import robertoCafagna.BE_capstone.entities.Brand;
-import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.BrandRepository;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -24,38 +22,16 @@ public class BrandService {
                         new NotFoundException("brand " + name + " non trovato"));
     }
 
-    public Page<Brand> getAll(int page, int size, String orderBy) {
+    public List<BrandResponseDTO> getAll() {
+        return brandRepository.findAll()
+                .stream()
+                .map(this::toDTO)
+                .toList();
+    }
 
-        if (size <= 0 || size > 20) {
-            size = 10;
-        }
-        if (page < 0) {
-            page = 0;
-        }
-        if (orderBy == null || orderBy.isBlank()) {
-            orderBy = "name";
-        }
-        Pageable pageable = PageRequest.of(page, size, Sort.by(orderBy)
-        );
-        return brandRepository.findAll(pageable);
+    private BrandResponseDTO toDTO(Brand brand) {
+        return new BrandResponseDTO(brand.getId(), brand.getName(), brand.getLogoUrl());
     }
 
 
-    public Brand save(Brand brand) {
-        if (brand.getName() == null || brand.getName().isBlank()) {
-            throw new BadRequestException("Il nome è obbligatorio");
-        }
-        if (brandRepository.existsByName(brand.getName())) {
-            throw new BadRequestException("brand già presente");
-        }
-        brand.setName(
-                brand.getName().trim()
-        );
-        return brandRepository.save(brand);
-    }
-
-    public boolean existsByName(String name) {
-        return this.brandRepository.existsByName(name);
-
-    }
 }
