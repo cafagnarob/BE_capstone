@@ -2,18 +2,19 @@ package robertoCafagna.BE_capstone.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import robertoCafagna.BE_capstone.DTO.CreateEventRequestDTO;
-import robertoCafagna.BE_capstone.DTO.EventDetailDTO;
-import robertoCafagna.BE_capstone.DTO.EventSummaryDTO;
-import robertoCafagna.BE_capstone.DTO.UpdateEventRequestDTO;
+import robertoCafagna.BE_capstone.DTO.*;
+import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.entities.Event;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
-import robertoCafagna.BE_capstone.enums.InviteStatus;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
@@ -21,6 +22,7 @@ import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
 import robertoCafagna.BE_capstone.repositories.EventInviteRepository;
 import robertoCafagna.BE_capstone.repositories.EventRepository;
 import robertoCafagna.BE_capstone.repositories.ParticipationRepository;
+import robertoCafagna.BE_capstone.specifications.EventSpecifications;
 
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +35,7 @@ public class EventService {
     private final EventRepository eventRepository;
     private final ParticipationRepository participationRepository;
     private final EventInviteRepository eventInviteRepository;
+    private final EventAccessChecker eventAccessChecker;
 
 
     @Transactional
@@ -98,7 +101,7 @@ public class EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
 
-        if (!canSeeDetail(currentUser, event)) {
+        if (!eventAccessChecker.canSeeDetail(currentUser, event)) {
             throw new UnauthorizedException("Non hai accesso ai dettagli di questo evento");
         }
 
@@ -117,6 +120,37 @@ public class EventService {
     }
 
 
+    public Page<EventSummaryDTO> searchEvents(User currentUser, EventSearchFilterDTO filters, int page, int size) {
+        if (size <= 0 || size > 50) size = 20;
+        if (page < 0) page = 0;
+
+        Specification<Event> spec = Specification
+                .where(EventSpecifications.visibilityIn(List.of(EventVisibility.PUBLIC, EventVisibility.PRIVATE_CODE)))
+                .and(EventSpecifications.hasStatus(EventStatus.ACTIVE));
+
+        if (filters.title() != null && !filters.title().isBlank()) {
+            spec = spec.and(EventSpecifications.titleContains(filters.title()));
+        }
+        if (filters.dateFrom() != null) {
+            spec = spec.and(EventSpecifications.startDateAfter(filters.dateFrom()));
+        }
+        if (filters.dateTo() != null) {
+            spec = spec.and(EventSpecifications.startDateBefore(filters.dateTo()));
+        }
+        if (filters.lat() != null && filters.lng() != null && filters.radiusKm() != null) {
+            double deltaLat = filters.radiusKm() / 111.0;
+            double deltaLng = filters.radiusKm() / (111.0 * Math.cos(Math.toRadians(filters.lat())));
+            spec = spec.and(EventSpecifications.withinBoundingBox(
+                    filters.lat() - deltaLat, filters.lat() + deltaLat,
+                    filters.lng() - deltaLng, filters.lng() + deltaLng
+            ));
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startDateTime"));
+        return eventRepository.findAll(spec, pageable).map(e -> toSummaryDTO(currentUser, e));
+    }
+
+
     private Event getOwnedEvent(User currentUser, UUID eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
@@ -126,32 +160,15 @@ public class EventService {
         return event;
     }
 
-    private boolean canSeeDetail(User currentUser, Event event) {
-        if (event.getOrganizer().getId().equals(currentUser.getId())) return true;
-
-        boolean isAcceptedParticipant = participationRepository
-                .findByEventIdAndUserId(event.getId(), currentUser.getId())
-                .map(p -> p.getStatus() == ParticipationStatus.ACCEPTED)
-                .orElse(false);
-        if (isAcceptedParticipant) return true;
-
-        if (event.getVisibility() == EventVisibility.INVITE_ONLY) {
-            return eventInviteRepository.findByEventIdAndInvitedUserId(event.getId(), currentUser.getId())
-                    .map(i -> i.getStatus() == InviteStatus.ACCEPTED)
-                    .orElse(false);
-        }
-
-        return false;
-    }
-
 
     private long countAccepted(UUID eventId) {
         return participationRepository.countByEventIdAndStatus(eventId, ParticipationStatus.ACCEPTED);
     }
 
-    
+
     private EventSummaryDTO toSummaryDTO(User currentUser, Event event) {
-        boolean locked = event.getVisibility() != EventVisibility.PUBLIC && !canSeeDetail(currentUser, event);
+        boolean locked = event.getVisibility() != EventVisibility.PUBLIC
+                && !eventAccessChecker.canSeeDetail(currentUser, event);
         return new EventSummaryDTO(
                 event.getId(), event.getTitle(), event.getOrganizer().getUsername(),
                 event.getStartDateTime(), event.getMaxParticipants(),
