@@ -28,24 +28,31 @@ public class Event {
     private User organizer;
 
     @Column(nullable = false)
+    @Setter
     private String title;
 
     @Column(nullable = false)
+    @Setter
     private String description;
 
     @Column(nullable = false)
+    @Setter
     private LocalDateTime startDateTime;
 
     @Column(nullable = false)
+    @Setter
     private LocalDateTime endDateTime;
 
     @Column(nullable = false)
+    @Setter
     private Double meetingPointLat;
 
     @Column(nullable = false)
+    @Setter
     private Double meetingPointLng;
 
     @Column(nullable = false)
+    @Setter
     private int maxParticipants;
 
     @Column(nullable = false)
@@ -59,6 +66,10 @@ public class Event {
 
     @Column(length = 50)
     private String accessCode;
+
+    @Column(nullable = false)
+    @Setter
+    private boolean autoApprove;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -82,7 +93,8 @@ public class Event {
             Double meetingPointLng,
             int maxParticipants,
             EventVisibility visibility,
-            String accessCode
+            String accessCode,
+            boolean autoApprove
     ) {
         this.organizer = organizer;
         this.title = title;
@@ -94,6 +106,7 @@ public class Event {
         this.maxParticipants = maxParticipants;
         this.visibility = visibility;
         this.accessCode = accessCode;
+        this.autoApprove = autoApprove;
         this.status = EventStatus.ACTIVE;
     }
 
