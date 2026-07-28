@@ -47,4 +47,7 @@ public class CloudinaryService {
         cloudinary.uploader()
                 .destroy(publicId, ObjectUtils.emptyMap());
     }
+
+    public record UploadResult(String url, String publicId) {
+    }
 }
