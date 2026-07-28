@@ -3,6 +3,7 @@ package robertoCafagna.BE_capstone.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.JoinEventRequestDTO;
@@ -30,6 +31,7 @@ public class EventParticipationService {
     private final EventRepository eventRepository;
     private final ParticipationRepository participationRepository;
     private final EventAccessChecker eventAccessChecker;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public ParticipationResponseDTO join(User currentUser, UUID eventId, JoinEventRequestDTO body) {
@@ -60,7 +62,7 @@ public class EventParticipationService {
 
         ParticipationStatus initialStatus;
         if (event.getVisibility() == EventVisibility.PRIVATE_CODE) {
-            if (body.accessCode() == null || !body.accessCode().equals(event.getAccessCode())) {
+            if (body.accessCode() == null || !passwordEncoder.matches(body.accessCode(), event.getAccessCode())) {
                 throw new BadRequestException("Codice di accesso non valido");
             }
             initialStatus = ParticipationStatus.ACCEPTED;

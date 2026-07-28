@@ -1,28 +1,28 @@
 package robertoCafagna.BE_capstone.repositories;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import robertoCafagna.BE_capstone.entities.FollowingRelationship;
 
-import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface FollowingRelationshipRepository
         extends JpaRepository<FollowingRelationship, UUID> {
 
-    boolean existsByFollowerIdAndFollowedUserId(
-            UUID followerId,
-            UUID followedUserId
-    );
 
-    void deleteByFollowerIdAndFollowedUserId(
-            UUID followerId,
-            UUID followedUserId
-    );
+    Optional<FollowingRelationship> findByFollowerIdAndFollowedUserId(UUID followerId, UUID followedUserId);
 
-    List<FollowingRelationship> findByFollowerId(UUID userId);
+    boolean existsByFollowerIdAndFollowedUserId(UUID followerId, UUID followedUserId);
 
-    List<FollowingRelationship> findByFollowedUserId(UUID userId);
+    Page<FollowingRelationship> findByFollowerId(UUID followerId, Pageable pageable);
 
+    Page<FollowingRelationship> findByFollowedUserId(UUID followedUserId, Pageable pageable);
+
+    long countByFollowerId(UUID followerId);
+
+    long countByFollowedUserId(UUID followedUserId);
 }
