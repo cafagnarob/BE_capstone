@@ -64,7 +64,8 @@ public class Event {
     @Enumerated(EnumType.STRING)
     private EventVisibility visibility;
 
-    @Column(length = 50)
+    @Column(length = 100)
+    @Setter
     private String accessCode;
 
     @Column(nullable = false)
