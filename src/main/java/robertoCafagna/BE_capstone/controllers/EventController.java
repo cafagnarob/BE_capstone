@@ -80,4 +80,15 @@ public class EventController {
         eventService.changeStatus(currentUser, eventId, body.status());
         return ResponseEntity.noContent().build();
     }
+
+
+    @PatchMapping("/{eventId}/access-code")
+    public ResponseEntity<Void> regenerateAccessCode(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID eventId,
+            @RequestBody @Valid RegenerateAccessCodeRequestDTO body
+    ) {
+        eventService.regenerateAccessCode(currentUser, eventId, body.newAccessCode());
+        return ResponseEntity.noContent().build();
+    }
 }
