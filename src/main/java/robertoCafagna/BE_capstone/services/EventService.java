@@ -154,6 +154,20 @@ public class EventService {
     }
 
 
+    @Transactional
+    public void regenerateAccessCode(User currentUser, UUID eventId, String newAccessCode) {
+        Event event = getOwnedEvent(currentUser, eventId);
+
+        if (event.getVisibility() != EventVisibility.PRIVATE_CODE) {
+            throw new BadRequestException("Questo evento non usa un codice di accesso");
+        }
+
+        event.setAccessCode(passwordEncoder.encode(newAccessCode));
+        eventRepository.save(event);
+        log.info("Codice di accesso rigenerato per l'evento {}", eventId);
+    }
+
+
     private Event getOwnedEvent(User currentUser, UUID eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
