@@ -23,6 +23,7 @@ public class PostLikeService {
 
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
+    private final NotificationService notificationService;
 
 
     @Transactional
@@ -36,6 +37,7 @@ public class PostLikeService {
 
         Like like = new Like(currentUser, post);
         likeRepository.save(like);
+        notificationService.notifyNewLike(post.getUser(), currentUser, post);
         log.info("Utente {} ha messo like al post {}", currentUser.getId(), postId);
 
         return toStatusDTO(postId, currentUser);

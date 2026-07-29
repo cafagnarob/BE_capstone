@@ -28,6 +28,7 @@ public class FollowService {
     private static final int DEFAULT_PAGE_SIZE = 20;
     private final FollowingRelationshipRepository followingRelationshipRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
 
     @Transactional
@@ -45,6 +46,7 @@ public class FollowService {
 
         FollowingRelationship relationship = new FollowingRelationship(currentUser, target);
         followingRelationshipRepository.save(relationship);
+        notificationService.notifyNewFollower(target, currentUser);
         log.info("Utente {} ha iniziato a seguire {}", currentUser.getId(), target.getId());
     }
 

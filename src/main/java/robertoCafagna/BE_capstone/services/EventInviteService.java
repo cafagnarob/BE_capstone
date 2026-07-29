@@ -30,6 +30,7 @@ public class EventInviteService {
     private final EventInviteRepository eventInviteRepository;
     private final UserRepository userRepository;
     private final ParticipationRepository participationRepository;
+    private final NotificationService notificationService;
 
 
     @Transactional
@@ -52,6 +53,7 @@ public class EventInviteService {
 
         EventInvite invite = new EventInvite(event, invitedUser);
         eventInviteRepository.save(invite);
+        notificationService.notifyEventInvite(invitedUser, event);
         return toDTO(invite);
     }
 
