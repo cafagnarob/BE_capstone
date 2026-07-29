@@ -2,6 +2,7 @@ package robertoCafagna.BE_capstone.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -82,5 +83,30 @@ public class UserController {
             @PathVariable UUID vehicleId
     ) {
         return ResponseEntity.ok(userService.selectVehicle(currentUser, vehicleId));
+    }
+
+    @PostMapping("/me/links")
+    public ResponseEntity<MyProfileResponseDTO> addProfileLink(
+            @AuthenticationPrincipal User currentUser,
+            @RequestBody @Valid ProfileLinkRequestDTO body
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.addProfileLink(currentUser, body));
+    }
+
+    @PutMapping("/me/links/{linkId}")
+    public ResponseEntity<MyProfileResponseDTO> updateProfileLink(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID linkId,
+            @RequestBody @Valid ProfileLinkRequestDTO body
+    ) {
+        return ResponseEntity.ok(userService.updateProfileLink(currentUser, linkId, body));
+    }
+
+    @DeleteMapping("/me/links/{linkId}")
+    public ResponseEntity<MyProfileResponseDTO> deleteProfileLink(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID linkId
+    ) {
+        return ResponseEntity.ok(userService.deleteProfileLink(currentUser, linkId));
     }
 }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import robertoCafagna.BE_capstone.DTO.*;
+import robertoCafagna.BE_capstone.entities.ProfileLink;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.entities.UserProfile;
 import robertoCafagna.BE_capstone.entities.Vehicle;
@@ -16,13 +17,14 @@ import robertoCafagna.BE_capstone.repositories.UserRepository;
 import robertoCafagna.BE_capstone.repositories.VehicleRepository;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserService {
-
+    private static final int MAX_LINKS_PER_PROFILE = 5;
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
     private final VehicleRepository vehicleRepository;
@@ -159,8 +161,65 @@ public class UserService {
         return toMyProfileDTO(currentUser);
     }
 
+    @Transactional
+    public MyProfileResponseDTO addProfileLink(User currentUser, ProfileLinkRequestDTO body) {
+        UserProfile profile = currentUser.getProfile();
+        if (profile == null) {
+            profile = new UserProfile(null, null, null);
+            profile.setUser(currentUser);
+            currentUser.setProfile(profile);
+        }
 
-    // --- mapping privati ---
+        if (profile.getLinks().size() >= MAX_LINKS_PER_PROFILE) {
+            throw new BadRequestException("Puoi aggiungere al massimo " + MAX_LINKS_PER_PROFILE + " link");
+        }
+
+        boolean alreadyExists = profile.getLinks().stream()
+                .anyMatch(l -> l.getPlatform() == body.platform());
+        if (alreadyExists) {
+            throw new BadRequestException("Hai già un link per questa piattaforma, modificalo invece di aggiungerne uno nuovo");
+        }
+
+        ProfileLink link = new ProfileLink(body.platform(), body.url());
+        profile.addLink(link);
+
+        userRepository.save(currentUser);
+        return toMyProfileDTO(currentUser);
+    }
+
+    @Transactional
+    public MyProfileResponseDTO updateProfileLink(User currentUser, UUID linkId, ProfileLinkRequestDTO body) {
+        ProfileLink link = getOwnedLink(currentUser, linkId);
+        link.setPlatform(body.platform());
+        link.setUrl(body.url());
+
+        userRepository.save(currentUser);
+        return toMyProfileDTO(currentUser);
+    }
+
+    @Transactional
+    public MyProfileResponseDTO deleteProfileLink(User currentUser, UUID linkId) {
+        UserProfile profile = currentUser.getProfile();
+        ProfileLink link = getOwnedLink(currentUser, linkId);
+        profile.removeLink(link);
+
+        userRepository.save(currentUser);
+        return toMyProfileDTO(currentUser);
+    }
+
+    private ProfileLink getOwnedLink(User currentUser, UUID linkId) {
+        UserProfile profile = currentUser.getProfile();
+        if (profile == null) {
+            throw new NotFoundException("Non hai ancora un profilo con link");
+        }
+        return profile.getLinks().stream()
+                .filter(l -> l.getId().equals(linkId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("Link non trovato"));
+    }
+
+
+    // --- mapping  ---
 
     private VehicleSummaryDTO toVehicleSummary(Vehicle vehicle) {
         if (vehicle == null) return null;
@@ -176,7 +235,8 @@ public class UserService {
                 profile != null ? profile.getLocation() : null,
                 profile != null ? profile.getBirthDate() : null,
                 user.getCreatedAt(), user.getLastLogin(), user.isActive(),
-                toVehicleSummary(user.getCurrentVehicle())
+                toVehicleSummary(user.getCurrentVehicle()),
+                toLinkDTOs(profile)
         );
     }
 
@@ -186,8 +246,16 @@ public class UserService {
                 user.getUsername(), user.getName(), user.getSurname(), user.getProfilePicture(),
                 profile != null ? profile.getDescription() : null,
                 profile != null ? profile.getLocation() : null,
-                toVehicleSummary(user.getCurrentVehicle())
+                toVehicleSummary(user.getCurrentVehicle()),
+                toLinkDTOs(profile)
         );
+    }
+
+    private List<ProfileLinkResponseDTO> toLinkDTOs(UserProfile profile) {
+        if (profile == null) return List.of();
+        return profile.getLinks().stream()
+                .map(l -> new ProfileLinkResponseDTO(l.getId(), l.getPlatform(), l.getUrl()))
+                .toList();
     }
 
 
