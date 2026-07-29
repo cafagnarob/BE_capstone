@@ -1,15 +1,16 @@
 package robertoCafagna.BE_capstone.repositories;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import robertoCafagna.BE_capstone.entities.Post;
 
-import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, UUID> {
-    List<Post> findByUserIdOrderByCreatedAtDesc(UUID userId);
+    Page<Post> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 
-    List<Post> findByEventId(UUID eventId);
+    Page<Post> findAllByOrderByCreatedAtDesc(Pageable pageable);
 }
