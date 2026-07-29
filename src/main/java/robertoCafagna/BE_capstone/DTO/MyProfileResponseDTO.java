@@ -2,6 +2,7 @@ package robertoCafagna.BE_capstone.DTO;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record MyProfileResponseDTO(
@@ -17,6 +18,7 @@ public record MyProfileResponseDTO(
         LocalDateTime createdAt,
         LocalDateTime lastLogin,
         boolean active,
-        VehicleSummaryDTO currentVehicle
+        VehicleSummaryDTO currentVehicle,
+        List<ProfileLinkResponseDTO> links
 ) {
 }
