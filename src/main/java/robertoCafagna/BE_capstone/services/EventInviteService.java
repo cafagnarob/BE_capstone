@@ -82,6 +82,16 @@ public class EventInviteService {
         return toDTO(invite);
     }
 
+    public List<EventInviteResponseDTO> getEventInvites(User organizer, UUID eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Evento non trovato"));
+        if (!event.getOrganizer().getId().equals(organizer.getId())) {
+            throw new UnauthorizedException("Non sei l'organizzatore di questo evento");
+        }
+        return eventInviteRepository.findByEventId(eventId)
+                .stream().map(this::toDTO).toList();
+    }
+
     public List<EventInviteResponseDTO> getMyInvites(User currentUser) {
         return eventInviteRepository.findByInvitedUserIdAndStatus(currentUser.getId(), InviteStatus.PENDING)
                 .stream().map(this::toDTO).toList();

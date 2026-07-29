@@ -30,6 +30,7 @@ public class Ride {
     @ManyToOne
     @JoinColumn(name = "vehicle_id")
     @ToString.Exclude
+    @Setter
     private Vehicle vehicle;
 
     @Column(length = 100)

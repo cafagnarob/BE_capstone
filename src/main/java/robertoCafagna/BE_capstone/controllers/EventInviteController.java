@@ -51,4 +51,12 @@ public class EventInviteController {
     ) {
         return ResponseEntity.ok(eventInviteService.respond(currentUser, inviteId, false));
     }
+
+    @GetMapping("/events/{eventId}/invites")
+    public ResponseEntity<List<EventInviteResponseDTO>> getEventInvites(
+            @AuthenticationPrincipal User organizer,
+            @PathVariable UUID eventId
+    ) {
+        return ResponseEntity.ok(eventInviteService.getEventInvites(organizer, eventId));
+    }
 }

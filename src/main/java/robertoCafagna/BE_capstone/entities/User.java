@@ -65,6 +65,7 @@ public class User implements UserDetails {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    @Setter
     private Role role;
 
     @OneToOne(mappedBy = "user",
