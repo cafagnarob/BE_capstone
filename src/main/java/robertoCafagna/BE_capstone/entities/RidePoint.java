@@ -47,14 +47,8 @@ public class RidePoint {
     private LocalDateTime recordedAt;
 
 
-    public RidePoint(
-            Ride ride,
-            Double latitude,
-            Double longitude,
-            int sequence,
-            Double speedKmh,
-            Double altitude,
-            LocalDateTime recordedAt
+    public RidePoint(Ride ride, Double latitude, Double longitude,
+                     int sequence, Double speedKmh, Double altitude, LocalDateTime recordedAt
     ) {
         this.ride = ride;
         this.latitude = latitude;
