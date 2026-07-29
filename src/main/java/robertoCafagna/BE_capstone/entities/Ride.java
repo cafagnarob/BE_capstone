@@ -3,6 +3,7 @@ package robertoCafagna.BE_capstone.entities;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 import robertoCafagna.BE_capstone.enums.RideType;
 
@@ -37,16 +38,16 @@ public class Ride {
     @Column(nullable = false)
     private LocalDateTime startedAt;
 
-    @Column(nullable = false)
+    @Column
     private LocalDateTime endedAt;
 
     @Column(nullable = false)
     private Double distanceKm;
 
-    @Column
+    @Column(nullable = false)
     private Double avgSpeedKmH;
 
-    @Column
+    @Column(nullable = false)
     private Double maxSpeedKmH;
 
     @Column
@@ -71,6 +72,7 @@ public class Ride {
     private LocalDateTime createdAt;
 
     @Enumerated(EnumType.STRING)
+    @Setter
     private RideType type;
 
     // inizio viaggio
