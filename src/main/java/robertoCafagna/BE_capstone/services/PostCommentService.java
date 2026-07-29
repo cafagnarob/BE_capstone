@@ -27,6 +27,7 @@ public class PostCommentService {
 
     private final PostRepository postRepository;
     private final PostCommentRepository postCommentRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public CommentResponseDTO addComment(User currentUser, UUID postId, CreateCommentRequestDTO body) {
@@ -35,6 +36,7 @@ public class PostCommentService {
 
         PostComment comment = new PostComment(currentUser, post, body.text());
         postCommentRepository.save(comment);
+        notificationService.notifyNewComment(post.getUser(), currentUser, post);
         log.info("Utente {} ha commentato il post {}", currentUser.getId(), postId);
         return toDTO(comment);
     }

@@ -32,6 +32,7 @@ public class EventParticipationService {
     private final ParticipationRepository participationRepository;
     private final EventAccessChecker eventAccessChecker;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
 
     @Transactional
     public ParticipationResponseDTO join(User currentUser, UUID eventId, JoinEventRequestDTO body) {
@@ -72,6 +73,9 @@ public class EventParticipationService {
 
         Participation participation = new Participation(event, currentUser, initialStatus);
         participationRepository.save(participation);
+        if (initialStatus == ParticipationStatus.PENDING) {
+            notificationService.notifyParticipationRequest(event.getOrganizer(), currentUser, event);
+        }
         log.info("Utente {} richiede partecipazione a evento {} (stato: {})",
                 currentUser.getId(), eventId, initialStatus);
         return toDTO(participation);
@@ -90,6 +94,7 @@ public class EventParticipationService {
 
         participation.setStatus(ParticipationStatus.ACCEPTED);
         participationRepository.save(participation);
+        notificationService.notifyParticipationAccepted(participation.getUser(), event);
         return toDTO(participation);
     }
 
@@ -101,6 +106,7 @@ public class EventParticipationService {
 
         participation.setStatus(ParticipationStatus.REJECTED);
         participationRepository.save(participation);
+        notificationService.notifyParticipationRejected(participation.getUser(), participation.getEvent());
         return toDTO(participation);
     }
 
