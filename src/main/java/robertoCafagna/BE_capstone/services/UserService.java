@@ -32,11 +32,15 @@ public class UserService {
 
 
     // --- lettura ---
-
+    @Transactional(readOnly = true)
     public MyProfileResponseDTO getMyProfile(User currentUser) {
-        return toMyProfileDTO(currentUser);
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+        return toMyProfileDTO(user);
     }
 
+
+    @Transactional(readOnly = true)
     public PublicProfileResponseDTO getPublicProfile(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new NotFoundException("L'utente " + username + " non è stato trovato"));
@@ -48,22 +52,26 @@ public class UserService {
 
     @Transactional
     public MyProfileResponseDTO updateProfile(User currentUser, UpdateProfileRequestDTO body) {
-        if (body.name() != null) currentUser.setName(body.name());
-        if (body.surname() != null) currentUser.setSurname(body.surname());
 
-        UserProfile profile = currentUser.getProfile();
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+        if (body.name() != null) user.setName(body.name());
+        if (body.surname() != null) user.setSurname(body.surname());
+
+        UserProfile profile = user.getProfile();
         if (profile == null) {
             profile = new UserProfile(body.description(), body.location(), body.birthDate());
-            profile.setUser(currentUser);
-            currentUser.setProfile(profile);
+            profile.setUser(user);
+            user.setProfile(profile);
         } else {
             if (body.description() != null) profile.setDescription(body.description());
             if (body.location() != null) profile.setLocation(body.location());
             if (body.birthDate() != null) profile.setBirthDate(body.birthDate());
         }
 
-        userRepository.save(currentUser);
-        return toMyProfileDTO(currentUser);
+        userRepository.save(user);
+        return toMyProfileDTO(user);
     }
 
     // --- credenziali: ognuna con la propria conferma password ---
@@ -80,35 +88,44 @@ public class UserService {
 
     @Transactional
     public MyProfileResponseDTO updateUsername(User currentUser, UpdateUsernameRequestDTO body) {
-        if (!passwordEncoder.matches(body.currentPassword(), currentUser.getPassword())) {
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+
+        if (!passwordEncoder.matches(body.currentPassword(), user.getPassword())) {
             throw new BadRequestException("Password non corretta");
         }
-        if (body.newUsername().equals(currentUser.getUsername())) {
+        if (body.newUsername().equals(user.getUsername())) {
             throw new BadRequestException("Il nuovo username coincide con quello attuale");
         }
         if (userRepository.existsByUsername(body.newUsername())) {
             throw new BadRequestException("Username già in uso");
         }
-        currentUser.setUsername(body.newUsername());
-        userRepository.save(currentUser);
-        return toMyProfileDTO(currentUser);
+        user.setUsername(body.newUsername());
+        userRepository.save(user);
+        return toMyProfileDTO(user);
     }
 
 
     @Transactional
     public MyProfileResponseDTO updateEmail(User currentUser, UpdateEmailRequestDTO body) {
-        if (!passwordEncoder.matches(body.currentPassword(), currentUser.getPassword())) {
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+
+        if (!passwordEncoder.matches(body.currentPassword(), user.getPassword())) {
             throw new BadRequestException("Password non corretta");
         }
-        if (body.newEmail().equalsIgnoreCase(currentUser.getEmail())) {
+        if (body.newEmail().equalsIgnoreCase(user.getEmail())) {
             throw new BadRequestException("La nuova email coincide con quella attuale");
         }
         if (userRepository.existsByEmail(body.newEmail())) {
             throw new BadRequestException("Email già in uso");
         }
-        currentUser.setEmail(body.newEmail());
-        userRepository.save(currentUser);
-        return toMyProfileDTO(currentUser);
+        user.setEmail(body.newEmail());
+        userRepository.save(user);
+        return toMyProfileDTO(user);
     }
 
 
@@ -154,20 +171,29 @@ public class UserService {
 
     @Transactional
     public MyProfileResponseDTO selectVehicle(User currentUser, UUID vehicleId) {
-        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, currentUser.getId())
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+
+        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, user.getId())
                 .orElseThrow(() -> new NotFoundException("Veicolo non trovato nel tuo garage"));
-        currentUser.setCurrentVehicle(vehicle);
-        userRepository.save(currentUser);
-        return toMyProfileDTO(currentUser);
+        user.setCurrentVehicle(vehicle);
+        userRepository.save(user);
+        return toMyProfileDTO(user);
     }
 
     @Transactional
     public MyProfileResponseDTO addProfileLink(User currentUser, ProfileLinkRequestDTO body) {
-        UserProfile profile = currentUser.getProfile();
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+        UserProfile profile = user.getProfile();
         if (profile == null) {
             profile = new UserProfile(null, null, null);
-            profile.setUser(currentUser);
-            currentUser.setProfile(profile);
+            profile.setUser(user);
+            user.setProfile(profile);
         }
 
         if (profile.getLinks().size() >= MAX_LINKS_PER_PROFILE) {
@@ -183,28 +209,35 @@ public class UserService {
         ProfileLink link = new ProfileLink(body.platform(), body.url());
         profile.addLink(link);
 
-        userRepository.save(currentUser);
-        return toMyProfileDTO(currentUser);
+        userRepository.save(user);
+        return toMyProfileDTO(user);
     }
 
     @Transactional
     public MyProfileResponseDTO updateProfileLink(User currentUser, UUID linkId, ProfileLinkRequestDTO body) {
-        ProfileLink link = getOwnedLink(currentUser, linkId);
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+        ProfileLink link = getOwnedLink(user, linkId);
         link.setPlatform(body.platform());
         link.setUrl(body.url());
 
-        userRepository.save(currentUser);
-        return toMyProfileDTO(currentUser);
+        userRepository.save(user);
+        return toMyProfileDTO(user);
     }
 
     @Transactional
     public MyProfileResponseDTO deleteProfileLink(User currentUser, UUID linkId) {
-        UserProfile profile = currentUser.getProfile();
-        ProfileLink link = getOwnedLink(currentUser, linkId);
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+        UserProfile profile = user.getProfile();
+        ProfileLink link = getOwnedLink(user, linkId);
         profile.removeLink(link);
 
-        userRepository.save(currentUser);
-        return toMyProfileDTO(currentUser);
+        userRepository.save(user);
+        return toMyProfileDTO(user);
     }
 
     private ProfileLink getOwnedLink(User currentUser, UUID linkId) {
