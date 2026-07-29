@@ -3,12 +3,14 @@ package robertoCafagna.BE_capstone.exceptions;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import robertoCafagna.BE_capstone.DTO.ErrorDTO;
 import robertoCafagna.BE_capstone.DTO.ErrorListDTO;
+
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -61,5 +63,11 @@ public class ErrorHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ErrorDTO handleAccessDenied(AccessDeniedException ex) {
         return new ErrorDTO("Non hai i permessi per accedere a questa risorsa", LocalDateTime.now());
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ErrorDTO handleAuthenticationException(AuthenticationException ex) {
+        return new ErrorDTO("Credenziali non valide", LocalDateTime.now());
     }
 }
