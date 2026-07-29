@@ -137,8 +137,9 @@ public class PostService {
      * TODO: implementare dopo aver definito stile/dimensioni con il frontend pronto.
      */
 
-    
-    private List<PostMedia> buildRouteMedia(Post post, Ride ride, boolean includeRoutePhoto) {
+
+    private List<PostMedia> buildRouteMedia(Post post, Ride ride, Boolean includeRoutePhoto) {
+        boolean wantsRoutePhoto = Boolean.TRUE.equals(includeRoutePhoto);
         return List.of(); // no-op finché Mapbox non è implementato
     }
 
