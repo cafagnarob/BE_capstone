@@ -10,7 +10,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import robertoCafagna.BE_capstone.entities.*;
 import robertoCafagna.BE_capstone.enums.*;
-import robertoCafagna.BE_capstone.repositories.*;
+import robertoCafagna.BE_capstone.repositories.EVENT.EventInviteRepository;
+import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
+import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
+import robertoCafagna.BE_capstone.repositories.GARAGE.BrandRepository;
+import robertoCafagna.BE_capstone.repositories.GARAGE.MotorcycleModelRepository;
+import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
+import robertoCafagna.BE_capstone.repositories.RIDE.RidePointRepository;
+import robertoCafagna.BE_capstone.repositories.RIDE.RideRepository;
+import robertoCafagna.BE_capstone.repositories.SOCIAL.*;
+import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

@@ -8,10 +8,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import robertoCafagna.BE_capstone.DTO.CommentResponseDTO;
-import robertoCafagna.BE_capstone.DTO.CreateCommentRequestDTO;
+import robertoCafagna.BE_capstone.DTO.SOCIAL.CommentResponseDTO;
+import robertoCafagna.BE_capstone.DTO.SOCIAL.CreateCommentRequestDTO;
 import robertoCafagna.BE_capstone.entities.User;
-import robertoCafagna.BE_capstone.services.PostCommentService;
+import robertoCafagna.BE_capstone.services.SOCIAL.PostCommentService;
 
 import java.util.UUID;
 

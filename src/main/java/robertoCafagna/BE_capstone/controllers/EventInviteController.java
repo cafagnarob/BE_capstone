@@ -6,10 +6,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import robertoCafagna.BE_capstone.DTO.CreateInviteRequestDTO;
-import robertoCafagna.BE_capstone.DTO.EventInviteResponseDTO;
+import robertoCafagna.BE_capstone.DTO.EVENT.CreateInviteRequestDTO;
+import robertoCafagna.BE_capstone.DTO.EVENT.EventInviteResponseDTO;
 import robertoCafagna.BE_capstone.entities.User;
-import robertoCafagna.BE_capstone.services.EventInviteService;
+import robertoCafagna.BE_capstone.services.EVENT.EventInviteService;
 
 import java.util.List;
 import java.util.UUID;

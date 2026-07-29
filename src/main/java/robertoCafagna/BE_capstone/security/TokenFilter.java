@@ -11,10 +11,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
-import robertoCafagna.BE_capstone.DTO.ErrorDTO;
+import robertoCafagna.BE_capstone.DTO.ERROR.ErrorDTO;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
-import robertoCafagna.BE_capstone.repositories.UserRepository;
+import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;

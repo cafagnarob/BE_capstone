@@ -8,12 +8,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import robertoCafagna.BE_capstone.DTO.FinishRideRequestDTO;
-import robertoCafagna.BE_capstone.DTO.RideDetailDTO;
-import robertoCafagna.BE_capstone.DTO.RideSummaryDTO;
-import robertoCafagna.BE_capstone.DTO.StartRideRequestDTO;
+import robertoCafagna.BE_capstone.DTO.RIDE.FinishRideRequestDTO;
+import robertoCafagna.BE_capstone.DTO.RIDE.RideDetailDTO;
+import robertoCafagna.BE_capstone.DTO.RIDE.RideSummaryDTO;
+import robertoCafagna.BE_capstone.DTO.RIDE.StartRideRequestDTO;
 import robertoCafagna.BE_capstone.entities.User;
-import robertoCafagna.BE_capstone.services.RideService;
+import robertoCafagna.BE_capstone.services.RIDE.RideService;
 
 import java.util.UUID;
 

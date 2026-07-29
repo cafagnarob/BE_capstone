@@ -8,7 +8,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import robertoCafagna.BE_capstone.DTO.*;
+import robertoCafagna.BE_capstone.DTO.ADMIN.ChangePasswordRequestDTO;
+import robertoCafagna.BE_capstone.DTO.AUTH.UpdateUsernameRequestDTO;
+import robertoCafagna.BE_capstone.DTO.ERROR.UpdateEmailRequestDTO;
+import robertoCafagna.BE_capstone.DTO.SOCIAL.MyProfileResponseDTO;
+import robertoCafagna.BE_capstone.DTO.USER.ProfileLinkRequestDTO;
+import robertoCafagna.BE_capstone.DTO.USER.PublicProfileResponseDTO;
+import robertoCafagna.BE_capstone.DTO.USER.UpdateProfileRequestDTO;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.services.UserService;
 

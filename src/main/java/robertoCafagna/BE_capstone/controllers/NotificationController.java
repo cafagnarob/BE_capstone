@@ -6,10 +6,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import robertoCafagna.BE_capstone.DTO.NotificationResponseDTO;
-import robertoCafagna.BE_capstone.DTO.UnreadCountDTO;
+import robertoCafagna.BE_capstone.DTO.SOCIAL.NotificationResponseDTO;
+import robertoCafagna.BE_capstone.DTO.SOCIAL.UnreadCountDTO;
 import robertoCafagna.BE_capstone.entities.User;
-import robertoCafagna.BE_capstone.services.NotificationService;
+import robertoCafagna.BE_capstone.services.SOCIAL.NotificationService;
 
 import java.util.UUID;
 

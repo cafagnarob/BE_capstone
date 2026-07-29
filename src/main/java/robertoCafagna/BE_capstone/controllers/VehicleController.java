@@ -8,11 +8,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import robertoCafagna.BE_capstone.DTO.CreateVehicleRequestDTO;
-import robertoCafagna.BE_capstone.DTO.UpdateVehicleRequestDTO;
-import robertoCafagna.BE_capstone.DTO.VehicleResponseDTO;
+import robertoCafagna.BE_capstone.DTO.GARAGE.CreateVehicleRequestDTO;
+import robertoCafagna.BE_capstone.DTO.GARAGE.UpdateVehicleRequestDTO;
+import robertoCafagna.BE_capstone.DTO.GARAGE.VehicleResponseDTO;
 import robertoCafagna.BE_capstone.entities.User;
-import robertoCafagna.BE_capstone.services.VehicleService;
+import robertoCafagna.BE_capstone.services.GARAGE.VehicleService;
 
 import java.util.List;
 import java.util.UUID;

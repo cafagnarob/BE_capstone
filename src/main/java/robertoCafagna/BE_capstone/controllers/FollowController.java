@@ -6,10 +6,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import robertoCafagna.BE_capstone.DTO.FollowStatsDTO;
-import robertoCafagna.BE_capstone.DTO.FollowUserSummaryDTO;
+import robertoCafagna.BE_capstone.DTO.SOCIAL.FollowStatsDTO;
+import robertoCafagna.BE_capstone.DTO.SOCIAL.FollowUserSummaryDTO;
 import robertoCafagna.BE_capstone.entities.User;
-import robertoCafagna.BE_capstone.services.FollowService;
+import robertoCafagna.BE_capstone.services.SOCIAL.FollowService;
 
 @RestController
 @RequestMapping("/users/{username}/follow")

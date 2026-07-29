@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import robertoCafagna.BE_capstone.DTO.BrandResponseDTO;
-import robertoCafagna.BE_capstone.services.AdminBrandService;
+import robertoCafagna.BE_capstone.DTO.GARAGE.BrandResponseDTO;
+import robertoCafagna.BE_capstone.services.ADMIN.AdminBrandService;
 
 @RestController
 @RequestMapping("/admin/brands")

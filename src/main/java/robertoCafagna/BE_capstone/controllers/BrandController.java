@@ -6,8 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import robertoCafagna.BE_capstone.DTO.BrandResponseDTO;
-import robertoCafagna.BE_capstone.services.BrandService;
+import robertoCafagna.BE_capstone.DTO.GARAGE.BrandResponseDTO;
+import robertoCafagna.BE_capstone.services.GARAGE.BrandService;
 
 import java.util.List;
 

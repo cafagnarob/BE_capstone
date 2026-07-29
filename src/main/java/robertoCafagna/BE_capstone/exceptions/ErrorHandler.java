@@ -8,8 +8,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import robertoCafagna.BE_capstone.DTO.ErrorDTO;
-import robertoCafagna.BE_capstone.DTO.ErrorListDTO;
+import robertoCafagna.BE_capstone.DTO.ERROR.ErrorDTO;
+import robertoCafagna.BE_capstone.DTO.ERROR.ErrorListDTO;
 
 
 import java.time.LocalDateTime;

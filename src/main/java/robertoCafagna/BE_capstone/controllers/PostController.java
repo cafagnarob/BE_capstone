@@ -10,10 +10,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import robertoCafagna.BE_capstone.DTO.CreatePostRequestDTO;
-import robertoCafagna.BE_capstone.DTO.PostResponseDTO;
+import robertoCafagna.BE_capstone.DTO.SOCIAL.CreatePostRequestDTO;
+import robertoCafagna.BE_capstone.DTO.SOCIAL.PostResponseDTO;
 import robertoCafagna.BE_capstone.entities.User;
-import robertoCafagna.BE_capstone.services.PostService;
+import robertoCafagna.BE_capstone.services.SOCIAL.PostService;
 
 import java.util.List;
 import java.util.UUID;

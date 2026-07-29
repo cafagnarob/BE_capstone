@@ -8,9 +8,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import robertoCafagna.BE_capstone.DTO.*;
+import robertoCafagna.BE_capstone.DTO.EVENT.*;
 import robertoCafagna.BE_capstone.entities.User;
-import robertoCafagna.BE_capstone.services.EventService;
+import robertoCafagna.BE_capstone.services.EVENT.EventService;
 
 import java.time.LocalDateTime;
 import java.util.List;

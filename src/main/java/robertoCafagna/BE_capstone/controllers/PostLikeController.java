@@ -5,9 +5,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import robertoCafagna.BE_capstone.DTO.LikeStatusDTO;
+import robertoCafagna.BE_capstone.DTO.SOCIAL.LikeStatusDTO;
 import robertoCafagna.BE_capstone.entities.User;
-import robertoCafagna.BE_capstone.services.PostLikeService;
+import robertoCafagna.BE_capstone.services.SOCIAL.PostLikeService;
 
 import java.util.UUID;
 

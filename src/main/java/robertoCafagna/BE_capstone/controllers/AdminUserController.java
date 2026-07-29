@@ -5,8 +5,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import robertoCafagna.BE_capstone.DTO.AdminUserSummaryDTO;
-import robertoCafagna.BE_capstone.services.AdminUserService;
+import robertoCafagna.BE_capstone.DTO.ADMIN.AdminUserSummaryDTO;
+import robertoCafagna.BE_capstone.services.ADMIN.AdminUserService;
 
 import java.util.UUID;
 

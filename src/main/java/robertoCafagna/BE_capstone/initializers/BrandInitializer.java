@@ -7,7 +7,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import robertoCafagna.BE_capstone.entities.Brand;
-import robertoCafagna.BE_capstone.repositories.BrandRepository;
+import robertoCafagna.BE_capstone.repositories.GARAGE.BrandRepository;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

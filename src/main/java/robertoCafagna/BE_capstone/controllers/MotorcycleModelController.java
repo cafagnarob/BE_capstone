@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import robertoCafagna.BE_capstone.DTO.MotorcycleModelResponseDTO;
-import robertoCafagna.BE_capstone.services.MotorcycleModelService;
+import robertoCafagna.BE_capstone.DTO.GARAGE.MotorcycleModelResponseDTO;
+import robertoCafagna.BE_capstone.services.GARAGE.MotorcycleModelService;
 
 import java.util.UUID;
 

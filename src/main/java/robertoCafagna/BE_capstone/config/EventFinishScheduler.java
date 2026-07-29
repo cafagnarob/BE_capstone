@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.entities.Event;
 import robertoCafagna.BE_capstone.enums.EventStatus;
-import robertoCafagna.BE_capstone.repositories.EventRepository;
+import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;

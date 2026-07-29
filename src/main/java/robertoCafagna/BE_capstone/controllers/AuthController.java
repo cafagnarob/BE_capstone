@@ -3,9 +3,13 @@ package robertoCafagna.BE_capstone.controllers;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import robertoCafagna.BE_capstone.DTO.*;
-import robertoCafagna.BE_capstone.services.AuthService;
-import robertoCafagna.BE_capstone.services.PasswordResetService;
+import robertoCafagna.BE_capstone.DTO.ADMIN.AuthResponseDTO;
+import robertoCafagna.BE_capstone.DTO.AUTH.ForgotPasswordRequestDTO;
+import robertoCafagna.BE_capstone.DTO.AUTH.LoginRequestDTO;
+import robertoCafagna.BE_capstone.DTO.AUTH.RegisterRequestDTO;
+import robertoCafagna.BE_capstone.DTO.AUTH.ResetPasswordRequestDTO;
+import robertoCafagna.BE_capstone.services.AUTH.AuthService;
+import robertoCafagna.BE_capstone.services.AUTH.PasswordResetService;
 
 @RestController
 @RequestMapping("/auth")

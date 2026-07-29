@@ -7,8 +7,8 @@ import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 import robertoCafagna.BE_capstone.enums.InviteStatus;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
-import robertoCafagna.BE_capstone.repositories.EventInviteRepository;
-import robertoCafagna.BE_capstone.repositories.ParticipationRepository;
+import robertoCafagna.BE_capstone.repositories.EVENT.EventInviteRepository;
+import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 
 
 @Component

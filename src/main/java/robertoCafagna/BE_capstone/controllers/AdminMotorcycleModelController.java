@@ -11,9 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import robertoCafagna.BE_capstone.DTO.CreateMotorcycleModelRequestDTO;
-import robertoCafagna.BE_capstone.DTO.MotorcycleModelResponseDTO;
-import robertoCafagna.BE_capstone.services.AdminMotorcycleModelService;
+import robertoCafagna.BE_capstone.DTO.GARAGE.CreateMotorcycleModelRequestDTO;
+import robertoCafagna.BE_capstone.DTO.GARAGE.MotorcycleModelResponseDTO;
+import robertoCafagna.BE_capstone.services.ADMIN.AdminMotorcycleModelService;
 
 @RestController
 @RequestMapping("/admin/motorcycle-models")

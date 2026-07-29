@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 import robertoCafagna.BE_capstone.entities.Brand;
 import robertoCafagna.BE_capstone.entities.MotorcycleModel;
 import robertoCafagna.BE_capstone.enums.MotorcycleCategory;
-import robertoCafagna.BE_capstone.repositories.MotorcycleModelRepository;
-import robertoCafagna.BE_capstone.services.BrandService;
+import robertoCafagna.BE_capstone.repositories.GARAGE.MotorcycleModelRepository;
+import robertoCafagna.BE_capstone.services.GARAGE.BrandService;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
