@@ -117,6 +117,18 @@ public class User implements UserDetails {
     @Setter
     private LocalDateTime resetPasswordTokenExpiry;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Setter
+    private boolean emailVerified;
+
+    @Column
+    @Setter
+    private String emailVerificationToken;
+
+    @Column
+    @Setter
+    private LocalDateTime emailVerificationTokenExpiry;
+
 
     public User(String username, String email,
                 String password) {
@@ -133,6 +145,7 @@ public class User implements UserDetails {
     private void beforeInsert() {
         createdAt = LocalDateTime.now();
         active = true;
+        emailVerified = false;
     }
 
 
