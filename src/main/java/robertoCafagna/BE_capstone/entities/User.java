@@ -109,6 +109,14 @@ public class User implements UserDetails {
     @Setter
     private String profilePicturePublicId;
 
+    @Column
+    @Setter
+    private String resetPasswordToken;
+
+    @Column
+    @Setter
+    private LocalDateTime resetPasswordTokenExpiry;
+
 
     public User(String username, String email,
                 String password) {
