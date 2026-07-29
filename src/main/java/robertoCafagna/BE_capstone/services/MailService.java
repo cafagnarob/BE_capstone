@@ -35,4 +35,17 @@ public class MailService {
 
         }
     }
+
+    public void sendVerificationEmail(String to, String username, String verificationLink) {
+        String html = """
+                <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+                    <h2>Benvenuto %s!</h2>
+                    <p>Grazie per esserti registrato su Rider App.</p>
+                    <p>Conferma il tuo indirizzo email cliccando sul link sottostante:</p>
+                    <p><a href="%s" style="background:#2a9d8f;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">Verifica email</a></p>
+                    <p>Se non hai creato tu questo account, ignora semplicemente questa email.</p>
+                </div>
+                """.formatted(username, verificationLink);
+        sendHtmlEmail(to, "Conferma la tua email — Rider App", html);
+    }
 }
