@@ -7,11 +7,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import robertoCafagna.BE_capstone.DTO.*;
 import robertoCafagna.BE_capstone.entities.MotorcycleModel;
+import robertoCafagna.BE_capstone.entities.Ride;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.entities.Vehicle;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.MotorcycleModelRepository;
+import robertoCafagna.BE_capstone.repositories.RideRepository;
 import robertoCafagna.BE_capstone.repositories.UserRepository;
 import robertoCafagna.BE_capstone.repositories.VehicleRepository;
 
@@ -27,6 +29,7 @@ public class VehicleService {
     private final MotorcycleModelRepository motorcycleModelRepository;
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
+    private final RideRepository rideRepository;
 
 
     @Transactional
@@ -93,6 +96,12 @@ public class VehicleService {
         if (wasCurrentVehicle) {
             currentUser.setCurrentVehicle(null);
             userRepository.save(currentUser);
+        }
+
+        List<Ride> rides = rideRepository.findByVehicleId(vehicleId);
+        if (!rides.isEmpty()) {
+            rides.forEach(r -> r.setVehicle(null));
+            rideRepository.saveAll(rides);
         }
 
         vehicleRepository.delete(vehicle);
