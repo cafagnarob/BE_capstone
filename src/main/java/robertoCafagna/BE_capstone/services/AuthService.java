@@ -1,11 +1,13 @@
 package robertoCafagna.BE_capstone.services;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.AuthResponseDTO;
 import robertoCafagna.BE_capstone.DTO.LoginRequestDTO;
 import robertoCafagna.BE_capstone.DTO.RegisterRequestDTO;
@@ -16,6 +18,7 @@ import robertoCafagna.BE_capstone.repositories.UserRepository;
 import robertoCafagna.BE_capstone.security.JWTTools;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +29,11 @@ public class AuthService {
     private final JWTTools jwtTools;
     private final AuthenticationManager authenticationManager;
     private final DefaultImageConfig defaultImageConfig;
+    private final MailService mailService;
+
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     public String register(RegisterRequestDTO body) {
         if (userRepository.existsByUsername(body.username())) {
@@ -43,8 +51,17 @@ public class AuthService {
                 defaultImageConfig.getDefaultAvatar()
         );
 
+
+        String verificationToken = UUID.randomUUID().toString();
+        user.setEmailVerificationToken(verificationToken);
+        user.setEmailVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
+
         userRepository.save(user);
-        return "Utente registrato con successo";
+
+        String verificationLink = frontendUrl + "/verify-email?token=" + verificationToken;
+        mailService.sendVerificationEmail(user.getEmail(), user.getUsername(), verificationLink);
+
+        return "Utente registrato con successo, controlla la tua email per verificare l'account";
     }
 
     public AuthResponseDTO login(LoginRequestDTO body) {
@@ -60,9 +77,42 @@ public class AuthService {
         }
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
-        
+
 
         String token = jwtTools.createToken(user);
         return new AuthResponseDTO(token);
+    }
+
+    @Transactional
+    public String verifyEmail(String token) {
+        User user = userRepository.findByEmailVerificationToken(token)
+                .orElseThrow(() -> new BadRequestException("Token non valido"));
+
+        if (user.getEmailVerificationTokenExpiry() == null
+                || user.getEmailVerificationTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Il link di verifica è scaduto, richiedine uno nuovo");
+        }
+
+        user.setEmailVerified(true);
+        user.setEmailVerificationToken(null);
+        user.setEmailVerificationTokenExpiry(null);
+        userRepository.save(user);
+
+        return "Email verificata con successo";
+    }
+
+    @Transactional
+    public void resendVerificationEmail(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            if (user.isEmailVerified()) return;
+
+            String verificationToken = UUID.randomUUID().toString();
+            user.setEmailVerificationToken(verificationToken);
+            user.setEmailVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
+            userRepository.save(user);
+
+            String verificationLink = frontendUrl + "/verify-email?token=" + verificationToken;
+            mailService.sendVerificationEmail(user.getEmail(), user.getUsername(), verificationLink);
+        });
     }
 }
