@@ -1,23 +1,25 @@
 package robertoCafagna.BE_capstone.controllers;
 
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import robertoCafagna.BE_capstone.DTO.AuthResponseDTO;
-import robertoCafagna.BE_capstone.DTO.LoginRequestDTO;
-import robertoCafagna.BE_capstone.DTO.RegisterRequestDTO;
+import robertoCafagna.BE_capstone.DTO.*;
 import robertoCafagna.BE_capstone.services.AuthService;
+import robertoCafagna.BE_capstone.services.PasswordResetService;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, PasswordResetService passwordResetService) {
         this.authService = authService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/register")
@@ -28,6 +30,18 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(@RequestBody LoginRequestDTO request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestBody @Valid ForgotPasswordRequestDTO body) {
+        passwordResetService.requestReset(body.email());
+        return ResponseEntity.ok("Se l'indirizzo email è registrato, riceverai a breve un link per reimpostare la password");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody @Valid ResetPasswordRequestDTO body) {
+        passwordResetService.resetPassword(body.token(), body.newPassword());
+        return ResponseEntity.ok("Password reimpostata con successo");
     }
 
 }
