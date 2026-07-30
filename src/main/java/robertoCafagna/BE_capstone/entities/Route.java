@@ -59,6 +59,10 @@ public class Route {
     @Column(nullable = false)
     private boolean avoidFerries;
 
+    @Column(nullable = false)
+    @Setter
+    private boolean importable;
+
     public Route(User creator, String name, String encodedPolyline, double distanceMeters, double durationSeconds,
                  boolean avoidHighways, boolean avoidTolls, boolean avoidFerries) {
         this.creator = creator;
@@ -69,6 +73,7 @@ public class Route {
         this.avoidHighways = avoidHighways;
         this.avoidTolls = avoidTolls;
         this.avoidFerries = avoidFerries;
+        this.importable = false;
     }
 
     public void addWaypoint(RouteWaypoint waypoint) {
