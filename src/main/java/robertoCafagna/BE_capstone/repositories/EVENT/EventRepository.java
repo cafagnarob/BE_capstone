@@ -21,5 +21,7 @@ public interface EventRepository extends JpaRepository<Event, UUID>, JpaSpecific
 
     Page<Event> findByVisibilityInAndStatus(List<EventVisibility> visibilities, EventStatus status, Pageable pageable);
 
+    boolean existsByRouteId(UUID routeId);
+
     List<Event> findByStatusAndEndDateTimeBefore(EventStatus status, LocalDateTime dateTime);
 }
