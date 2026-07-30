@@ -83,6 +83,10 @@ public class Event {
     @ToString.Exclude
     private List<Participation> participants = new ArrayList<>();
 
+    @ManyToOne
+    @JoinColumn(name = "route_id", nullable = false)
+    private Route route;
+
 
     public Event(
             User organizer,
