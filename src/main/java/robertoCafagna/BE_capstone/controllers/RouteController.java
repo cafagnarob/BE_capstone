@@ -53,4 +53,23 @@ public class RouteController {
         routeService.deleteRoute(currentUser, routeId);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{routeId}/importable")
+    public ResponseEntity<Void> setImportable(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID routeId,
+            @RequestParam boolean value
+    ) {
+        routeService.setImportable(currentUser, routeId, value);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{routeId}/import")
+    public ResponseEntity<RouteResponseDTO> importRoute(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID routeId
+    ) {
+        RouteResponseDTO imported = routeService.importRoute(currentUser, routeId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(imported);
+    }
 }
