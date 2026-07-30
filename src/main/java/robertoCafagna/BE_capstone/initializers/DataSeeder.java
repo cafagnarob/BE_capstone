@@ -18,6 +18,7 @@ import robertoCafagna.BE_capstone.repositories.GARAGE.MotorcycleModelRepository;
 import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RidePointRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RideRepository;
+import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.*;
 import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 
@@ -37,6 +38,7 @@ public class DataSeeder implements CommandLineRunner {
     private final BrandRepository brandRepository;
     private final MotorcycleModelRepository motorcycleModelRepository;
     private final VehicleRepository vehicleRepository;
+    private final RouteRepository routeRepository;
     private final EventRepository eventRepository;
     private final ParticipationRepository participationRepository;
     private final EventInviteRepository eventInviteRepository;
@@ -72,7 +74,8 @@ public class DataSeeder implements CommandLineRunner {
 
         List<User> users = seedUsers();
         List<Vehicle> vehicles = seedVehicles(users, models);
-        List<Event> events = seedEvents(users);
+        List<Route> routes = seedRoutes(users);
+        List<Event> events = seedEvents(users, routes);
         seedParticipationsAndInvites(users, events);
         List<Ride> rides = seedRides(users, vehicles);
         List<Post> posts = seedPosts(users, events, rides);
@@ -135,31 +138,84 @@ public class DataSeeder implements CommandLineRunner {
         return vehicles;
     }
 
+    // --- ROUTE ---
+
+    private List<Route> seedRoutes(List<User> users) {
+        List<Route> routes = new ArrayList<>();
+
+        routes.add(buildFakeRoute(users.get(1), "Stelvio Loop",
+                new double[]{46.5286, 10.4527}, new double[]{46.5350, 10.5100}));
+
+        routes.add(buildFakeRoute(users.get(2), "Costiera Amalfitana Tour",
+                new double[]{40.6340, 14.6027}, new double[]{40.6480, 14.5290}));
+
+        routes.add(buildFakeRoute(users.get(1), "Appennino Toscano",
+                new double[]{43.7711, 11.2486}, new double[]{43.8200, 11.1800}));
+
+        routes.add(buildFakeRoute(users.get(3), "Dolomiti Weekend",
+                new double[]{46.4102, 11.8440}, new double[]{46.4600, 11.9200}));
+
+        routes.add(buildFakeRoute(users.get(2), "Giro del mese scorso",
+                new double[]{45.4642, 9.1900}, new double[]{45.5100, 9.2500}));
+
+        return routeRepository.saveAll(routes);
+    }
+
+    private Route buildFakeRoute(User creator, String name, double[] start, double[] end) {
+
+        String fakePolyline = "fake_polyline_" + faker.internet().uuid();
+        double distanceMeters = 15000 + random.nextInt(60000);
+        double durationSeconds = distanceMeters / 15.0;
+
+        Route route = new Route(creator, name, fakePolyline, distanceMeters, durationSeconds,
+                random.nextBoolean(), random.nextBoolean(), random.nextBoolean());
+        route.setImportable(random.nextBoolean());
+
+        route.addWaypoint(new RouteWaypoint(start[0], start[1], 0, "Partenza"));
+        route.addWaypoint(new RouteWaypoint(end[0], end[1], 1, "Arrivo"));
+
+        return route;
+    }
+
+
     // --- EVENT ---
 
-    private List<Event> seedEvents(List<User> users) {
+    private List<Event> seedEvents(List<User> users, List<Route> routes) {
         List<Event> events = new ArrayList<>();
 
+        RouteWaypoint stelvioStart = routes.get(0).getWaypoints().get(0);
         events.add(new Event(users.get(1), "Giro Passo dello Stelvio", faker.lorem().paragraph(2),
                 LocalDateTime.now().plusDays(10), LocalDateTime.now().plusDays(10).plusHours(6),
-                46.5286, 10.4527, 20, EventVisibility.PUBLIC, null, true));
+                routes.get(0), stelvioStart.getLatitude(), stelvioStart.getLongitude(), 20,
+                EventVisibility.PUBLIC, null, true));
 
+
+        RouteWaypoint costieraStart = routes.get(1).getWaypoints().get(0);
         events.add(new Event(users.get(2), "Tour Costiera Amalfitana", faker.lorem().paragraph(2),
                 LocalDateTime.now().plusDays(15), LocalDateTime.now().plusDays(15).plusHours(8),
-                40.6340, 14.6027, 15, EventVisibility.PUBLIC, null, false));
+                routes.get(1), costieraStart.getLatitude(), costieraStart.getLongitude(),
+                15, EventVisibility.PUBLIC, null, false));
 
+
+        RouteWaypoint toscanaStart = routes.get(2).getWaypoints().get(0);
         events.add(new Event(users.get(1), "Giro Appennino Toscano", faker.lorem().paragraph(2),
                 LocalDateTime.now().plusDays(20), LocalDateTime.now().plusDays(20).plusHours(5),
-                43.7711, 11.2486, 12,
-                EventVisibility.PRIVATE_CODE, passwordEncoder.encode("TOSCANA25"), false));
+                routes.get(2), toscanaStart.getLatitude(), toscanaStart.getLongitude(),
+                12, EventVisibility.PRIVATE_CODE, passwordEncoder.encode("TOSCANA25"), false));
 
+
+        RouteWaypoint dolomitiStart = routes.get(3).getWaypoints().get(0);
         events.add(new Event(users.get(3), "Weekend Dolomiti - Gruppo ristretto", faker.lorem().paragraph(2),
                 LocalDateTime.now().plusDays(25), LocalDateTime.now().plusDays(26),
-                46.4102, 11.8440, 8, EventVisibility.INVITE_ONLY, null, false));
+                routes.get(3), dolomitiStart.getLatitude(), dolomitiStart.getLongitude(),
+                8, EventVisibility.INVITE_ONLY, null, false));
 
+
+        RouteWaypoint pastStart = routes.get(4).getWaypoints().get(0);
         events.add(new Event(users.get(2), "Giro concluso del mese scorso", faker.lorem().paragraph(2),
                 LocalDateTime.now().minusDays(20), LocalDateTime.now().minusDays(20).plusHours(4),
-                45.4642, 9.1900, 10, EventVisibility.PUBLIC, null, true));
+                routes.get(4), pastStart.getLatitude(), pastStart.getLongitude(),
+                10, EventVisibility.PUBLIC, null, true));
         events.get(4).setStatus(EventStatus.FINISHED);
 
         return eventRepository.saveAll(events);
@@ -168,21 +224,19 @@ public class DataSeeder implements CommandLineRunner {
     private void seedParticipationsAndInvites(List<User> users, List<Event> events) {
         List<Participation> participations = new ArrayList<>();
 
-        // Evento pubblico auto-approve (indice 0): 3 partecipanti diretti
         for (int i = 4; i < 7; i++) {
             participations.add(new Participation(events.get(0), users.get(i), ParticipationStatus.ACCEPTED));
         }
 
-        // Evento pubblico senza auto-approve (indice 1): richieste pending + una accettata
+
         participations.add(new Participation(events.get(1), users.get(5), ParticipationStatus.PENDING));
         participations.add(new Participation(events.get(1), users.get(6), ParticipationStatus.ACCEPTED));
 
-        // Evento con codice (indice 2): partecipante che ha inserito il codice giusto
+
         participations.add(new Participation(events.get(2), users.get(4), ParticipationStatus.ACCEPTED));
 
         participationRepository.saveAll(participations);
 
-        // Inviti per l'evento INVITE_ONLY (indice 3)
         List<EventInvite> invites = new ArrayList<>();
         invites.add(new EventInvite(events.get(3), users.get(5)));
         invites.add(new EventInvite(events.get(3), users.get(6)));
@@ -210,7 +264,6 @@ public class DataSeeder implements CommandLineRunner {
         }
         rides = rideRepository.saveAll(rides);
 
-        // punti GPS fittizi per ogni giro (percorso semplice, coordinate incrementali)
         for (Ride ride : rides) {
             List<RidePoint> points = new ArrayList<>();
             double baseLat = 44.0 + random.nextDouble();
