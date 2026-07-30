@@ -11,8 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.RIDE.CreateRouteRequestDTO;
 import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
 import robertoCafagna.BE_capstone.DTO.RIDE.RouteWaypointRequestDTO;
-import robertoCafagna.BE_capstone.DTO.RIDE.RouteWaypointResponseDTO;
-import robertoCafagna.BE_capstone.config.GoogleMapsLinkBuilder;
+import robertoCafagna.BE_capstone.config.RouteMapper;
 import robertoCafagna.BE_capstone.entities.Route;
 import robertoCafagna.BE_capstone.entities.RouteWaypoint;
 import robertoCafagna.BE_capstone.entities.User;
@@ -34,6 +33,7 @@ public class RouteService {
 
     private final RouteRepository routeRepository;
     private final MapboxDirectionsService mapboxDirectionsService;
+    private final RouteMapper routeMapper;
 
 
     @Transactional
@@ -64,13 +64,13 @@ public class RouteService {
 
         routeRepository.save(route);
         log.info("Utente {} ha creato il percorso {}", currentUser.getId(), route.getId());
-        return toDTO(route);
+        return routeMapper.toDTO(route);
     }
 
     public RouteResponseDTO getRouteById(UUID routeId) {
         Route route = routeRepository.findById(routeId)
                 .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
-        return toDTO(route);
+        return routeMapper.toDTO(route);
     }
 
     public Page<RouteResponseDTO> getMyRoutes(User currentUser, int page, int size) {
@@ -78,7 +78,7 @@ public class RouteService {
         if (page < 0) page = 0;
         Pageable pageable = PageRequest.of(page, size);
         return routeRepository.findByCreatorIdOrderByCreatedAtDesc(currentUser.getId(), pageable)
-                .map(this::toDTO);
+                .map(routeMapper::toDTO);
     }
 
     @Transactional
@@ -91,19 +91,49 @@ public class RouteService {
         routeRepository.delete(route);
     }
 
-    private RouteResponseDTO toDTO(Route route) {
-        List<RouteWaypointResponseDTO> waypointDTOs = route.getWaypoints().stream()
-                .map(w -> new RouteWaypointResponseDTO(w.getLatitude(), w.getLongitude(), w.getSequence(), w.getLabel()))
-                .toList();
 
-        String googleMapsUrl = GoogleMapsLinkBuilder.buildNavigationUrl(route.getWaypoints());
+    @Transactional
+    public RouteResponseDTO importRoute(User currentUser, UUID routeId) {
+        Route original = routeRepository.findByIdWithWaypoints(routeId)
+                .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
 
-        return new RouteResponseDTO(
-                route.getId(), route.getName(), waypointDTOs,
-                route.getEncodedPolyline(), route.getDistanceMeters(), route.getDurationSeconds(),
-                route.isAvoidHighways(), route.isAvoidTolls(), route.isAvoidFerries(),
-                googleMapsUrl, route.getCreatedAt()
+        if (!original.isImportable()) {
+            throw new UnauthorizedException("Il creatore non ha reso importabile questo percorso");
+        }
+
+        // copia identica: stessa geometria/distanza/durata, non richiamo di nuovo Mapbox
+        Route imported = new Route(
+                currentUser,
+                original.getName() + " (importato)",
+                original.getEncodedPolyline(),
+                original.getDistanceMeters(),
+                original.getDurationSeconds(),
+                original.isAvoidHighways(),
+                original.isAvoidTolls(),
+                original.isAvoidFerries()
         );
+
+        int sequence = 0;
+        for (RouteWaypoint w : original.getWaypoints()) {
+            imported.addWaypoint(new RouteWaypoint(w.getLatitude(), w.getLongitude(), sequence++, w.getLabel()));
+        }
+
+        routeRepository.save(imported);
+        log.info("Utente {} ha importato il percorso {} (originale: {})",
+                currentUser.getId(), imported.getId(), original.getId());
+        return routeMapper.toDTO(imported);
     }
+
+    @Transactional
+    public void setImportable(User currentUser, UUID routeId, boolean value) {
+        Route route = routeRepository.findById(routeId)
+                .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
+        if (!route.getCreator().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedException("Non sei il creatore di questo percorso");
+        }
+        route.setImportable(value);
+        routeRepository.save(route);
+    }
+
 }
 
