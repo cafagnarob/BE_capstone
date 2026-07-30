@@ -94,6 +94,7 @@ public class Event {
             String description,
             LocalDateTime startDateTime,
             LocalDateTime endDateTime,
+            Route route,
             Double meetingPointLat,
             Double meetingPointLng,
             int maxParticipants,
@@ -106,6 +107,7 @@ public class Event {
         this.description = description;
         this.startDateTime = startDateTime;
         this.endDateTime = endDateTime;
+        this.route = route;
         this.meetingPointLat = meetingPointLat;
         this.meetingPointLng = meetingPointLng;
         this.maxParticipants = maxParticipants;
