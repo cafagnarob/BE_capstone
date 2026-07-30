@@ -12,7 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.EVENT.*;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
+import robertoCafagna.BE_capstone.config.RouteMapper;
 import robertoCafagna.BE_capstone.entities.Event;
+import robertoCafagna.BE_capstone.entities.Route;
+import robertoCafagna.BE_capstone.entities.RouteWaypoint;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
@@ -20,9 +23,9 @@ import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
-import robertoCafagna.BE_capstone.repositories.EVENT.EventInviteRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
+import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
 import robertoCafagna.BE_capstone.specifications.EventSpecifications;
 
 import java.util.List;
@@ -35,9 +38,10 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final ParticipationRepository participationRepository;
-    private final EventInviteRepository eventInviteRepository;
+    private final RouteMapper routeMapper;
     private final EventAccessChecker eventAccessChecker;
     private final PasswordEncoder passwordEncoder;
+    private final RouteRepository routeRepository;
 
 
     @Transactional
@@ -50,12 +54,23 @@ public class EventService {
             throw new BadRequestException("Specificare un codice di accesso per un evento con visibilità PRIVATE_CODE");
         }
 
+        Route route = routeRepository.findById(body.routeId())
+                .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
+        if (!route.getCreator().getId().equals(organizer.getId())) {
+            throw new UnauthorizedException("Non puoi usare un percorso che non hai creato tu");
+        }
+        if (route.getWaypoints().isEmpty()) {
+            throw new BadRequestException("Il percorso selezionato non ha punti validi");
+        }
+
+        RouteWaypoint startPoint = route.getWaypoints().get(0);
+
         boolean autoApprove = body.visibility() == EventVisibility.PUBLIC && body.autoApprove();
 
         Event event = new Event(
                 organizer, body.title(), body.description(),
                 body.startDateTime(), body.endDateTime(),
-                body.meetingPointLat(), body.meetingPointLng(),
+                route, startPoint.getLatitude(), startPoint.getLongitude(),
                 body.maxParticipants(), body.visibility(),
                 body.visibility() == EventVisibility.PRIVATE_CODE ?
                         passwordEncoder.encode(body.accessCode()) : null,
@@ -199,7 +214,8 @@ public class EventService {
                 event.getOrganizer().getUsername(), event.getStartDateTime(), event.getEndDateTime(),
                 event.getMeetingPointLat(), event.getMeetingPointLng(), event.getMaxParticipants(),
                 currentParticipants, event.getVisibility(), event.isAutoApprove(),
-                event.getStatus(), event.getCreatedAt()
+                event.getStatus(), event.getCreatedAt(), routeMapper.toDTO(event.getRoute())
+                
         );
     }
 }
