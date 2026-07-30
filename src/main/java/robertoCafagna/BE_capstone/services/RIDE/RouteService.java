@@ -1,0 +1,109 @@
+package robertoCafagna.BE_capstone.services.RIDE;
+
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import robertoCafagna.BE_capstone.DTO.RIDE.CreateRouteRequestDTO;
+import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
+import robertoCafagna.BE_capstone.DTO.RIDE.RouteWaypointRequestDTO;
+import robertoCafagna.BE_capstone.DTO.RIDE.RouteWaypointResponseDTO;
+import robertoCafagna.BE_capstone.config.GoogleMapsLinkBuilder;
+import robertoCafagna.BE_capstone.entities.Route;
+import robertoCafagna.BE_capstone.entities.RouteWaypoint;
+import robertoCafagna.BE_capstone.entities.User;
+import robertoCafagna.BE_capstone.exceptions.BadRequestException;
+import robertoCafagna.BE_capstone.exceptions.NotFoundException;
+import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
+import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class RouteService {
+
+    private static final int MAX_ROUTES_PER_USER_PER_DAY = 20;
+
+    private final RouteRepository routeRepository;
+    private final MapboxDirectionsService mapboxDirectionsService;
+
+
+    @Transactional
+    public RouteResponseDTO createRoute(User currentUser, CreateRouteRequestDTO body) {
+        // limite per singolo utente
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        long todayCount = routeRepository.countByCreatorIdAndCreatedAtAfter(currentUser.getId(), startOfDay);
+        if (todayCount >= MAX_ROUTES_PER_USER_PER_DAY) {
+            throw new BadRequestException("Hai raggiunto il limite giornaliero di percorsi creabili");
+        }
+
+        List<double[]> points = body.points().stream()
+                .map(p -> new double[]{p.latitude(), p.longitude()})
+                .toList();
+
+        MapboxDirectionsService.DirectionsResult directions = mapboxDirectionsService.calculateRoute(
+                points, body.avoidHighways(), body.avoidTolls(), body.avoidFerries()
+        );
+
+        Route route = new Route(currentUser, body.name(), directions.encodedPolyline(),
+                directions.distanceMeters(), directions.durationSeconds(),
+                body.avoidHighways(), body.avoidTolls(), body.avoidFerries());
+
+        int sequence = 0;
+        for (RouteWaypointRequestDTO p : body.points()) {
+            route.addWaypoint(new RouteWaypoint(p.latitude(), p.longitude(), sequence++, p.label()));
+        }
+
+        routeRepository.save(route);
+        log.info("Utente {} ha creato il percorso {}", currentUser.getId(), route.getId());
+        return toDTO(route);
+    }
+
+    public RouteResponseDTO getRouteById(UUID routeId) {
+        Route route = routeRepository.findById(routeId)
+                .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
+        return toDTO(route);
+    }
+
+    public Page<RouteResponseDTO> getMyRoutes(User currentUser, int page, int size) {
+        if (size <= 0 || size > 50) size = 20;
+        if (page < 0) page = 0;
+        Pageable pageable = PageRequest.of(page, size);
+        return routeRepository.findByCreatorIdOrderByCreatedAtDesc(currentUser.getId(), pageable)
+                .map(this::toDTO);
+    }
+
+    @Transactional
+    public void deleteRoute(User currentUser, UUID routeId) {
+        Route route = routeRepository.findById(routeId)
+                .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
+        if (!route.getCreator().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedException("Non sei il creatore di questo percorso");
+        }
+        routeRepository.delete(route);
+    }
+
+    private RouteResponseDTO toDTO(Route route) {
+        List<RouteWaypointResponseDTO> waypointDTOs = route.getWaypoints().stream()
+                .map(w -> new RouteWaypointResponseDTO(w.getLatitude(), w.getLongitude(), w.getSequence(), w.getLabel()))
+                .toList();
+
+        String googleMapsUrl = GoogleMapsLinkBuilder.buildNavigationUrl(route.getWaypoints());
+
+        return new RouteResponseDTO(
+                route.getId(), route.getName(), waypointDTOs,
+                route.getEncodedPolyline(), route.getDistanceMeters(), route.getDurationSeconds(),
+                route.isAvoidHighways(), route.isAvoidTolls(), route.isAvoidFerries(),
+                googleMapsUrl, route.getCreatedAt()
+        );
+    }
+}
+
