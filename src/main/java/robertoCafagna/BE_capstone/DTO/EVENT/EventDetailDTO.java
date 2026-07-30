@@ -1,5 +1,6 @@
 package robertoCafagna.BE_capstone.DTO.EVENT;
 
+import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
 import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 
@@ -20,6 +21,7 @@ public record EventDetailDTO(
         EventVisibility visibility,
         boolean autoApprove,
         EventStatus status,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        RouteResponseDTO route
 ) {
 }
