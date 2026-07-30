@@ -18,6 +18,7 @@ import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
+import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
 
 import java.time.LocalDateTime;
@@ -34,6 +35,7 @@ public class RouteService {
     private final RouteRepository routeRepository;
     private final MapboxDirectionsService mapboxDirectionsService;
     private final RouteMapper routeMapper;
+    private final EventRepository eventRepository;
 
 
     @Transactional
@@ -87,6 +89,9 @@ public class RouteService {
                 .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
         if (!route.getCreator().getId().equals(currentUser.getId())) {
             throw new UnauthorizedException("Non sei il creatore di questo percorso");
+        }
+        if (eventRepository.existsByRouteId(routeId)) {
+            throw new BadRequestException("Non puoi eliminare un percorso usato da uno o più eventi");
         }
         routeRepository.delete(route);
     }
