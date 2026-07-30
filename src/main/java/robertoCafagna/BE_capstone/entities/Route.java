@@ -50,12 +50,25 @@ public class Route {
     @ToString.Exclude
     private List<RouteWaypoint> waypoints = new ArrayList<>();
 
-    public Route(User creator, String name, String encodedPolyline, double distanceMeters, double durationSeconds) {
+    @Column(nullable = false)
+    private boolean avoidHighways;
+
+    @Column(nullable = false)
+    private boolean avoidTolls;
+
+    @Column(nullable = false)
+    private boolean avoidFerries;
+
+    public Route(User creator, String name, String encodedPolyline, double distanceMeters, double durationSeconds,
+                 boolean avoidHighways, boolean avoidTolls, boolean avoidFerries) {
         this.creator = creator;
         this.name = name;
         this.encodedPolyline = encodedPolyline;
         this.distanceMeters = distanceMeters;
         this.durationSeconds = durationSeconds;
+        this.avoidHighways = avoidHighways;
+        this.avoidTolls = avoidTolls;
+        this.avoidFerries = avoidFerries;
     }
 
     public void addWaypoint(RouteWaypoint waypoint) {
