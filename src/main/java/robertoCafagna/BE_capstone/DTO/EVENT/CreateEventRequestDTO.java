@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record CreateEventRequestDTO(
         @NotBlank(message = "Inserire un titolo")
@@ -18,10 +19,8 @@ public record CreateEventRequestDTO(
         LocalDateTime startDateTime,
         @NotNull(message = "Specificare data/ora di fine")
         LocalDateTime endDateTime,
-        @NotNull(message = "Specificare la latitudine del ritrovo")
-        Double meetingPointLat,
-        @NotNull(message = "Specificare la longitudine del ritrovo")
-        Double meetingPointLng,
+        @NotNull(message = "Specificare il percorso")
+        UUID routeId,
         @Min(value = 1, message = "Il numero massimo di partecipanti deve essere almeno 1")
         int maxParticipants,
         @NotNull(message = "Specificare la visibilità")
