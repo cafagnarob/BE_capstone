@@ -48,6 +48,8 @@ public class AuthService {
                 passwordEncoder.encode(body.password())
         );
 
+        user.setName(body.name());
+        user.setUsername(body.username());
         user.setProfilePicture(
                 defaultImageConfig.getDefaultAvatar()
         );
