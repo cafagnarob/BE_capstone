@@ -91,6 +91,11 @@ public class UserController {
         return ResponseEntity.ok(userService.selectVehicle(currentUser, vehicleId));
     }
 
+    @DeleteMapping("/me/vehicle")
+    public ResponseEntity<MyProfileResponseDTO> clearVehicle(@AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(userService.clearCurrentVehicle(currentUser));
+    }
+
     @PostMapping("/me/links")
     public ResponseEntity<MyProfileResponseDTO> addProfileLink(
             @AuthenticationPrincipal User currentUser,
