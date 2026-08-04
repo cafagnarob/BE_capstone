@@ -56,4 +56,22 @@ public class VehicleController {
         vehicleService.deleteVehicle(currentUser, vehicleId);
         return ResponseEntity.noContent().build();
     }
+
+
+    @PatchMapping(value = "/{vehicleId}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<VehicleResponseDTO> updatePhoto(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID vehicleId,
+            @RequestPart("photo") MultipartFile photo
+    ) {
+        return ResponseEntity.ok(vehicleService.updateVehiclePhoto(currentUser, vehicleId, photo));
+    }
+
+    @DeleteMapping("/{vehicleId}/photo")
+    public ResponseEntity<VehicleResponseDTO> deletePhoto(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID vehicleId
+    ) {
+        return ResponseEntity.ok(vehicleService.deleteVehiclePhoto(currentUser, vehicleId));
+    }
 }
