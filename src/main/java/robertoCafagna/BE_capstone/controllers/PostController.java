@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import robertoCafagna.BE_capstone.DTO.SOCIAL.CreatePostRequestDTO;
 import robertoCafagna.BE_capstone.DTO.SOCIAL.PostResponseDTO;
 import robertoCafagna.BE_capstone.entities.User;
+import robertoCafagna.BE_capstone.enums.FeedType;
 import robertoCafagna.BE_capstone.services.SOCIAL.PostService;
 
 import java.util.List;
@@ -38,10 +39,11 @@ public class PostController {
     @GetMapping
     public ResponseEntity<Page<PostResponseDTO>> getFeed(
             @AuthenticationPrincipal User currentUser,
+            @RequestParam(defaultValue = "FOLLOWING") FeedType type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(postService.getFeed(currentUser, page, size));
+        return ResponseEntity.ok(postService.getFeed(currentUser, type, page, size));
     }
 
     @GetMapping("/user/{userId}")
