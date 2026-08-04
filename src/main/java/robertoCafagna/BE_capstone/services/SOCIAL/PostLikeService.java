@@ -9,7 +9,6 @@ import robertoCafagna.BE_capstone.DTO.SOCIAL.LikeStatusDTO;
 import robertoCafagna.BE_capstone.entities.Like;
 import robertoCafagna.BE_capstone.entities.Post;
 import robertoCafagna.BE_capstone.entities.User;
-import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.LikeRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.PostRepository;
@@ -31,15 +30,10 @@ public class PostLikeService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new NotFoundException("Post non trovato"));
 
-        if (likeRepository.existsByUserIdAndPostId(currentUser.getId(), postId)) {
-            throw new BadRequestException("Hai già messo like a questo post");
+        if (!likeRepository.existsByUserIdAndPostId(currentUser.getId(), postId)) {
+            likeRepository.save(new Like(currentUser, post));
+            notificationService.notifyNewLike(post.getUser(), currentUser, post);
         }
-
-        Like like = new Like(currentUser, post);
-        likeRepository.save(like);
-        notificationService.notifyNewLike(post.getUser(), currentUser, post);
-        log.info("Utente {} ha messo like al post {}", currentUser.getId(), postId);
-
         return toStatusDTO(postId, currentUser);
     }
 
@@ -48,13 +42,11 @@ public class PostLikeService {
         if (!postRepository.existsById(postId)) {
             throw new NotFoundException("Post non trovato");
         }
-
-        Like like = likeRepository.findByUserIdAndPostId(currentUser.getId(), postId)
-                .orElseThrow(() -> new BadRequestException("Non hai messo like a questo post"));
-
-        likeRepository.delete(like);
-        log.info("Utente {} ha rimosso il like dal post {}", currentUser.getId(), postId);
-
+        likeRepository.findByUserIdAndPostId(currentUser.getId(), postId)
+                .ifPresent(like -> {
+                    likeRepository.delete(like);
+                    log.info("Utente {} ha rimosso il like dal post {}", currentUser.getId(), postId);
+                });
         return toStatusDTO(postId, currentUser);
     }
 
