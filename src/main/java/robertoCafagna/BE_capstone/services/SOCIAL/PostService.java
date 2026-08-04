@@ -15,6 +15,7 @@ import robertoCafagna.BE_capstone.DTO.SOCIAL.PostMediaResponseDTO;
 import robertoCafagna.BE_capstone.DTO.SOCIAL.PostResponseDTO;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.entities.*;
+import robertoCafagna.BE_capstone.enums.FeedType;
 import robertoCafagna.BE_capstone.enums.MediaType;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
@@ -29,6 +30,7 @@ import robertoCafagna.BE_capstone.services.CloudinaryService;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -67,10 +69,13 @@ public class PostService {
         return toDTO(currentUser, post);
     }
 
-    public Page<PostResponseDTO> getFeed(User currentUser, int page, int size) {
+    public Page<PostResponseDTO> getFeed(User currentUser, FeedType type, int page, int size) {
         Pageable pageable = buildPageable(page, size);
-        return postRepository.findAllByOrderByCreatedAtDesc(pageable)
-                .map(p -> toDTO(currentUser, p));
+        Page<Post> posts = switch (type) {
+            case FOLLOWING -> postRepository.findFollowingFeed(currentUser.getId(), pageable);
+            case EXPLORE -> postRepository.findExploreFeed(currentUser.getId(), pageable);
+        };
+        return posts.map(p -> toDTO(currentUser, p));
     }
 
     public Page<PostResponseDTO> getUserPosts(User currentUser, UUID userId, int page, int size) {
@@ -92,7 +97,22 @@ public class PostService {
         if (!post.getUser().getId().equals(currentUser.getId())) {
             throw new UnauthorizedException("Non sei l'autore di questo post");
         }
+
+        List<String> publicIds = post.getMedia().stream()
+                .map(PostMedia::getMediaPublicId)
+                .filter(Objects::nonNull)
+                .toList();
+
+
         postRepository.delete(post);
+
+        for (String publicId : publicIds) {
+            try {
+                cloudinaryService.deleteImage(publicId);
+            } catch (IOException e) {
+                log.warn("Impossibile cancellare l'immagine {} del post {}", publicId, postId, e);
+            }
+        }
         log.info("Utente {} ha eliminato il post {}", currentUser.getId(), postId);
     }
 
@@ -131,7 +151,9 @@ public class PostService {
             if (file.isEmpty()) continue;
             try {
                 CloudinaryService.UploadResult result = cloudinaryService.uploadImage(file, "riders-app/posts");
-                media.add(new PostMedia(post, result.url(), MediaType.IMAGE, order++));
+                PostMedia pm = new PostMedia(post, result.url(), MediaType.IMAGE, order++);
+                pm.setMediaPublicId(result.publicId());
+                media.add(pm);
             } catch (IOException e) {
                 throw new BadRequestException("Errore durante il caricamento di un'immagine");
             }
