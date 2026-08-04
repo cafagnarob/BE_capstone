@@ -28,6 +28,7 @@ import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
 import robertoCafagna.BE_capstone.specifications.EventSpecifications;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -142,30 +143,32 @@ public class EventService {
         if (size <= 0 || size > 50) size = 20;
         if (page < 0) page = 0;
 
-        Specification<Event> spec = Specification
-                .where(EventSpecifications.visibilityIn(List.of(EventVisibility.PUBLIC, EventVisibility.PRIVATE_CODE)))
-                .and(EventSpecifications.hasStatus(EventStatus.ACTIVE));
+        List<Specification<Event>> specs = new ArrayList<>();
+
+        specs.add(EventSpecifications.visibilityIn(
+                List.of(EventVisibility.PUBLIC, EventVisibility.PRIVATE_CODE)));
+        specs.add(EventSpecifications.hasStatus(EventStatus.ACTIVE));
 
         if (filters.title() != null && !filters.title().isBlank()) {
-            spec = spec.and(EventSpecifications.titleContains(filters.title()));
+            specs.add(EventSpecifications.titleContains(filters.title().trim()));
         }
         if (filters.dateFrom() != null) {
-            spec = spec.and(EventSpecifications.startDateAfter(filters.dateFrom()));
+            specs.add(EventSpecifications.startDateAfter(filters.dateFrom()));
         }
         if (filters.dateTo() != null) {
-            spec = spec.and(EventSpecifications.startDateBefore(filters.dateTo()));
+            specs.add(EventSpecifications.startDateBefore(filters.dateTo()));
         }
         if (filters.lat() != null && filters.lng() != null && filters.radiusKm() != null) {
             double deltaLat = filters.radiusKm() / 111.0;
             double deltaLng = filters.radiusKm() / (111.0 * Math.cos(Math.toRadians(filters.lat())));
-            spec = spec.and(EventSpecifications.withinBoundingBox(
+            specs.add(EventSpecifications.withinBoundingBox(
                     filters.lat() - deltaLat, filters.lat() + deltaLat,
                     filters.lng() - deltaLng, filters.lng() + deltaLng
             ));
         }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("startDateTime"));
-        return eventRepository.findAll(spec, pageable).map(e -> toSummaryDTO(currentUser, e));
+        return eventRepository.findAll(Specification.allOf(specs), pageable).map(e -> toSummaryDTO(currentUser, e));
     }
 
 
@@ -215,7 +218,7 @@ public class EventService {
                 event.getMeetingPointLat(), event.getMeetingPointLng(), event.getMaxParticipants(),
                 currentParticipants, event.getVisibility(), event.isAutoApprove(),
                 event.getStatus(), event.getCreatedAt(), routeMapper.toDTO(event.getRoute())
-                
+
         );
     }
 }
