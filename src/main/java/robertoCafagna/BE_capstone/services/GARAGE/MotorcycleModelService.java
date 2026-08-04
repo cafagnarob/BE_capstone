@@ -6,16 +6,22 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import robertoCafagna.BE_capstone.DTO.GARAGE.BrandResponseDTO;
 import robertoCafagna.BE_capstone.DTO.GARAGE.MotorcycleModelResponseDTO;
 import robertoCafagna.BE_capstone.entities.Brand;
 import robertoCafagna.BE_capstone.entities.MotorcycleModel;
+import robertoCafagna.BE_capstone.enums.MotorcycleCategory;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.repositories.GARAGE.MotorcycleModelRepository;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+
+import static robertoCafagna.BE_capstone.specifications.MotorcycleModelSpecifications.*;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +57,28 @@ public class MotorcycleModelService {
     public Page<MotorcycleModelResponseDTO> search(String name, int page, int size, String orderBy) {
         Pageable pageable = buildPageable(page, size, orderBy);
         return motorcycleModelRepository.findByNameContainingIgnoreCase(name, pageable).map(this::toDTO);
+    }
+
+    public Page<MotorcycleModelResponseDTO> findFiltered(
+            UUID brandId, String name, MotorcycleCategory category,
+            Integer minCc, Integer maxCc,
+            int page, int size, String orderBy
+    ) {
+        if (size > 100) size = 100;
+
+        List<Specification<MotorcycleModel>> specs = new ArrayList<>();
+
+        if (brandId != null) specs.add(hasBrand(brandId));
+        if (name != null && !name.isBlank()) specs.add(nameContains(name.trim()));
+        if (category != null) specs.add(hasCategory(category));
+        if (minCc != null) specs.add(engineCcGreaterThanOrEqual(minCc));
+        if (maxCc != null) specs.add(engineCcLessThanOrEqual(maxCc));
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(orderBy));
+
+        return motorcycleModelRepository
+                .findAll(Specification.allOf(specs), pageable)
+                .map(this::toDTO);
     }
 
     private MotorcycleModelResponseDTO toDTO(MotorcycleModel model) {
