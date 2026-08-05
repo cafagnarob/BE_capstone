@@ -91,4 +91,22 @@ public class EventController {
         eventService.regenerateAccessCode(currentUser, eventId, body.newAccessCode());
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/organized")
+    public ResponseEntity<Page<EventSummaryDTO>> getOrganizedEvents(
+            @AuthenticationPrincipal User currentUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(eventService.getOrganizedEvents(currentUser, page, size));
+    }
+
+    @GetMapping("/participating")
+    public ResponseEntity<Page<EventSummaryDTO>> getParticipatingEvents(
+            @AuthenticationPrincipal User currentUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(eventService.getParticipatingEvents(currentUser, page, size));
+    }
 }
