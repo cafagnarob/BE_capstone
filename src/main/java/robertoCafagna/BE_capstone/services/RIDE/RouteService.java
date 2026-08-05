@@ -8,9 +8,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import robertoCafagna.BE_capstone.DTO.RIDE.CreateRouteRequestDTO;
-import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
-import robertoCafagna.BE_capstone.DTO.RIDE.RouteWaypointRequestDTO;
+import robertoCafagna.BE_capstone.DTO.RIDE.*;
 import robertoCafagna.BE_capstone.config.RouteMapper;
 import robertoCafagna.BE_capstone.entities.Route;
 import robertoCafagna.BE_capstone.entities.RouteWaypoint;
@@ -138,6 +136,22 @@ public class RouteService {
         }
         route.setImportable(value);
         routeRepository.save(route);
+    }
+
+    public RoutePreviewDTO previewRoute(PreviewRouteRequestDTO body) {
+        List<double[]> points = body.points().stream()
+                .map(p -> new double[]{p.latitude(), p.longitude()})
+                .toList();
+
+        MapboxDirectionsService.DirectionsResult directions = mapboxDirectionsService.calculateRoute(
+                points, body.avoidHighways(), body.avoidTolls(), body.avoidFerries()
+        );
+
+        return new RoutePreviewDTO(
+                directions.encodedPolyline(),
+                directions.distanceMeters(),
+                directions.durationSeconds()
+        );
     }
 
 }
