@@ -205,7 +205,7 @@ public class PostService {
         return new EventSummaryDTO(
                 event.getId(), event.getTitle(), event.getOrganizer().getUsername(),
                 event.getStartDateTime(), event.getMaxParticipants(), 0,
-                event.getVisibility(), event.getStatus(), locked
+                event.getVisibility(), event.getStatus(), locked, null, false
         );
     }
 
