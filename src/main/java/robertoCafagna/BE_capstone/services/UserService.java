@@ -294,6 +294,7 @@ public class UserService {
     private PublicProfileResponseDTO toPublicProfileDTO(User user) {
         UserProfile profile = user.getProfile();
         return new PublicProfileResponseDTO(
+                user.getId(),
                 user.getUsername(), user.getName(), user.getSurname(), user.getProfilePicture(),
                 profile != null ? profile.getDescription() : null,
                 profile != null ? profile.getLocation() : null,
