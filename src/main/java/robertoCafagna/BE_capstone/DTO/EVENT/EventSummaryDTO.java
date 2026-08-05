@@ -2,6 +2,7 @@ package robertoCafagna.BE_capstone.DTO.EVENT;
 
 import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
+import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -15,6 +16,8 @@ public record EventSummaryDTO(
         long currentParticipants,
         EventVisibility visibility,
         EventStatus status,
-        boolean locked
+        boolean locked,
+        ParticipationStatus myParticipationStatus,
+        boolean organizer
 ) {
 }
