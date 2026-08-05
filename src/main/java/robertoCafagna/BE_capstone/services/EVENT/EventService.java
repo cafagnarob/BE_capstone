@@ -13,10 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.EVENT.*;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.config.RouteMapper;
-import robertoCafagna.BE_capstone.entities.Event;
-import robertoCafagna.BE_capstone.entities.Route;
-import robertoCafagna.BE_capstone.entities.RouteWaypoint;
-import robertoCafagna.BE_capstone.entities.User;
+import robertoCafagna.BE_capstone.entities.*;
 import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
@@ -80,7 +77,7 @@ public class EventService {
 
         eventRepository.save(event);
         log.info("Utente {} ha creato l'evento {}", organizer.getId(), event.getId());
-        return toDetailDTO(event, 0);
+        return toDetailDTO(organizer, event, 0);
     }
 
     @Transactional
@@ -96,7 +93,7 @@ public class EventService {
         if (body.maxParticipants() != null) event.setMaxParticipants(body.maxParticipants());
 
         eventRepository.save(event);
-        return toDetailDTO(event, countAccepted(eventId));
+        return toDetailDTO(currentUser, event, countAccepted(eventId));
     }
 
     @Transactional
@@ -124,7 +121,7 @@ public class EventService {
             throw new UnauthorizedException("Non hai accesso ai dettagli di questo evento");
         }
 
-        return toDetailDTO(event, countAccepted(eventId));
+        return toDetailDTO(currentUser, event, countAccepted(eventId));
     }
 
 
@@ -159,8 +156,10 @@ public class EventService {
             specs.add(EventSpecifications.startDateBefore(filters.dateTo()));
         }
         if (filters.lat() != null && filters.lng() != null && filters.radiusKm() != null) {
+            double cosLat = Math.max(Math.cos(Math.toRadians(filters.lat())), 0.01);
             double deltaLat = filters.radiusKm() / 111.0;
-            double deltaLng = filters.radiusKm() / (111.0 * Math.cos(Math.toRadians(filters.lat())));
+            double deltaLng = filters.radiusKm() / (111.0 * cosLat);
+           
             specs.add(EventSpecifications.withinBoundingBox(
                     filters.lat() - deltaLat, filters.lat() + deltaLat,
                     filters.lng() - deltaLng, filters.lng() + deltaLng
@@ -200,25 +199,57 @@ public class EventService {
         return participationRepository.countByEventIdAndStatus(eventId, ParticipationStatus.ACCEPTED);
     }
 
+    public Page<EventSummaryDTO> getOrganizedEvents(User currentUser, int page, int size) {
+        Pageable pageable = buildPageable(page, size);
+        return eventRepository.findByOrganizerIdOrderByStartDateTimeDesc(currentUser.getId(), pageable)
+                .map(e -> toSummaryDTO(currentUser, e));
+    }
+
+    public Page<EventSummaryDTO> getParticipatingEvents(User currentUser, int page, int size) {
+        Pageable pageable = buildPageable(page, size);
+        return eventRepository.findParticipatingEvents(
+                currentUser.getId(),
+                List.of(ParticipationStatus.PENDING, ParticipationStatus.ACCEPTED),
+                pageable
+        ).map(e -> toSummaryDTO(currentUser, e));
+    }
+
+    private Pageable buildPageable(int page, int size) {
+        if (size <= 0 || size > 50) size = 20;
+        if (page < 0) page = 0;
+        return PageRequest.of(page, size);
+    }
+
 
     private EventSummaryDTO toSummaryDTO(User currentUser, Event event) {
+        boolean isOrganizer = event.getOrganizer().getId().equals(currentUser.getId());
         boolean locked = event.getVisibility() != EventVisibility.PUBLIC
                 && !eventAccessChecker.canSeeDetail(currentUser, event);
         return new EventSummaryDTO(
                 event.getId(), event.getTitle(), event.getOrganizer().getUsername(),
                 event.getStartDateTime(), event.getMaxParticipants(),
-                countAccepted(event.getId()), event.getVisibility(), event.getStatus(), locked
+                countAccepted(event.getId()), event.getVisibility(), event.getStatus(), locked,
+                myStatus(currentUser, event.getId()), isOrganizer
         );
     }
 
-    private EventDetailDTO toDetailDTO(Event event, long currentParticipants) {
+
+    private EventDetailDTO toDetailDTO(User currentUser, Event event, long currentParticipants) {
+        boolean isOrganizer = event.getOrganizer().getId().equals(currentUser.getId());
         return new EventDetailDTO(
                 event.getId(), event.getTitle(), event.getDescription(),
                 event.getOrganizer().getUsername(), event.getStartDateTime(), event.getEndDateTime(),
                 event.getMeetingPointLat(), event.getMeetingPointLng(), event.getMaxParticipants(),
                 currentParticipants, event.getVisibility(), event.isAutoApprove(),
-                event.getStatus(), event.getCreatedAt(), routeMapper.toDTO(event.getRoute())
-
+                event.getStatus(), event.getCreatedAt(), routeMapper.toDTO(event.getRoute()),
+                myStatus(currentUser, event.getId()), isOrganizer
         );
+    }
+
+
+    private ParticipationStatus myStatus(User currentUser, UUID eventId) {
+        return participationRepository.findByEventIdAndUserId(eventId, currentUser.getId())
+                .map(Participation::getStatus)
+                .orElse(null);
     }
 }
