@@ -3,6 +3,7 @@ package robertoCafagna.BE_capstone.DTO.EVENT;
 import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
 import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
+import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -22,6 +23,8 @@ public record EventDetailDTO(
         boolean autoApprove,
         EventStatus status,
         LocalDateTime createdAt,
-        RouteResponseDTO route
+        RouteResponseDTO route,
+        ParticipationStatus myParticipationStatus,
+        boolean organizer
 ) {
 }
