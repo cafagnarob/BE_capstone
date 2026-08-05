@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import robertoCafagna.BE_capstone.DTO.RIDE.CreateRouteRequestDTO;
+import robertoCafagna.BE_capstone.DTO.RIDE.PreviewRouteRequestDTO;
+import robertoCafagna.BE_capstone.DTO.RIDE.RoutePreviewDTO;
 import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.services.RIDE.RouteService;
@@ -71,5 +73,10 @@ public class RouteController {
     ) {
         RouteResponseDTO imported = routeService.importRoute(currentUser, routeId);
         return ResponseEntity.status(HttpStatus.CREATED).body(imported);
+    }
+
+    @PostMapping("/preview")
+    public ResponseEntity<RoutePreviewDTO> preview(@RequestBody @Valid PreviewRouteRequestDTO body) {
+        return ResponseEntity.ok(routeService.previewRoute(body));
     }
 }
