@@ -17,6 +17,7 @@ public record EventDetailDTO(
         LocalDateTime endDateTime,
         Double meetingPointLat,
         Double meetingPointLng,
+        String meetingPointAddress,
         int maxParticipants,
         long currentParticipants,
         EventVisibility visibility,
