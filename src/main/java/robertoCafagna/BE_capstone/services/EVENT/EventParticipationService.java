@@ -15,6 +15,7 @@ import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
+import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
@@ -64,7 +65,7 @@ public class EventParticipationService {
 
         ParticipationStatus initialStatus;
         if (event.getVisibility() == EventVisibility.PRIVATE_CODE) {
-            if (body.accessCode() == null || !passwordEncoder.matches(body.accessCode(), event.getAccessCode())) {
+            if (body.accessCode() == null || !body.accessCode().trim().equalsIgnoreCase(event.getAccessCode())) {
                 throw new BadRequestException("Codice di accesso non valido");
             }
             initialStatus = ParticipationStatus.ACCEPTED;
@@ -136,7 +137,7 @@ public class EventParticipationService {
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
 
         if (!eventAccessChecker.canSeeDetail(currentUser, event)) {
-            throw new UnauthorizedException("Non hai accesso ai partecipanti di questo evento");
+            throw new ForbiddenException("Non hai accesso ai partecipanti di questo evento");
         }
 
         return participationRepository.findByEventIdAndStatus(eventId, ParticipationStatus.ACCEPTED)
@@ -151,7 +152,7 @@ public class EventParticipationService {
                 .orElseThrow(() -> new NotFoundException("Richiesta di partecipazione non trovata"));
         if (!participation.getEvent().getId().equals(eventId)
                 || !participation.getEvent().getOrganizer().getId().equals(organizer.getId())) {
-            throw new UnauthorizedException("Non sei l'organizzatore di questo evento");
+            throw new ForbiddenException("Non sei l'organizzatore di questo evento");
         }
         return participation;
     }
@@ -165,7 +166,8 @@ public class EventParticipationService {
     private ParticipationResponseDTO toDTO(Participation participation) {
         return new ParticipationResponseDTO(
                 participation.getId(), participation.getEvent().getId(),
-                participation.getUser().getUsername(), participation.getStatus(), participation.getJoinedAt()
+                participation.getUser().getUsername(), participation.getUser().getProfilePicture(),
+                participation.getStatus(), participation.getJoinedAt()
         );
     }
 
