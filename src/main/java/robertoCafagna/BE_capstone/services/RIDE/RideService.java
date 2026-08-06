@@ -14,8 +14,8 @@ import robertoCafagna.BE_capstone.entities.RidePoint;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.entities.Vehicle;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
+import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
-import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
 import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RidePointRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RideRepository;
@@ -109,7 +109,7 @@ public class RideService {
         Ride ride = rideRepository.findById(rideId)
                 .orElseThrow(() -> new NotFoundException("Giro non trovato"));
         if (!ride.getUser().getId().equals(currentUser.getId())) {
-            throw new UnauthorizedException("Non sei il proprietario di questo giro");
+            throw new ForbiddenException("Non sei il proprietario di questo giro");
         }
         return ride;
     }
