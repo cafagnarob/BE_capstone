@@ -18,6 +18,8 @@ public record EventSummaryDTO(
         EventStatus status,
         boolean locked,
         ParticipationStatus myParticipationStatus,
-        boolean organizer
+        boolean organizer,
+        Double meetingPointLat,
+        Double meetingPointLng
 ) {
 }
