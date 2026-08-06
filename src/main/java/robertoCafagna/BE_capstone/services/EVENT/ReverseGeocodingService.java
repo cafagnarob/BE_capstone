@@ -33,7 +33,9 @@ public class ReverseGeocodingService {
             if (response == null || response.features() == null || response.features().isEmpty()) {
                 return null;
             }
-            return response.features().get(0).placeName();
+            String address = response.features().get(0).placeName();
+            log.info("Reverse geocoding risolto: {}", address);
+            return address;
         } catch (Exception e) {
             log.warn("Reverse geocoding fallito per {},{}", latitude, longitude, e);
             return null;
