@@ -9,6 +9,7 @@ public record ParticipationResponseDTO(
         UUID id,
         UUID eventId,
         String username,
+        String profilePicture,
         ParticipationStatus status,
         LocalDateTime joinedAt
 ) {
