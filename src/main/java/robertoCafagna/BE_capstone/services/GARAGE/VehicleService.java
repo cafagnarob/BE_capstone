@@ -13,9 +13,9 @@ import robertoCafagna.BE_capstone.entities.Vehicle;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.GARAGE.MotorcycleModelRepository;
+import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RideRepository;
 import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
-import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
 import robertoCafagna.BE_capstone.services.CloudinaryService;
 
 import java.io.IOException;
@@ -38,7 +38,9 @@ public class VehicleService {
         MotorcycleModel model = motorcycleModelRepository.findById(body.modelId())
                 .orElseThrow(() -> new NotFoundException("Modello non trovato"));
 
-        if (body.licensePlate() != null && vehicleRepository.existsByLicensePlate(body.licensePlate())) {
+        String normalizedPlate = normalizePlate(body.licensePlate());
+
+        if (normalizedPlate != null && vehicleRepository.existsByLicensePlate(normalizedPlate)) {
             throw new BadRequestException("Targa già registrata");
         }
 
@@ -56,7 +58,7 @@ public class VehicleService {
 
         Vehicle vehicle = new Vehicle(
                 currentUser, model, body.nickname(), body.year(),
-                body.licensePlate(), body.vin(), body.color(), body.initialMileage(), photoUrl
+                normalizedPlate, body.vin(), body.color(), body.initialMileage(), photoUrl
         );
         vehicle.setPhotoPublicId(photoPublicId);
 
@@ -64,6 +66,14 @@ public class VehicleService {
         log.info("Utente {} ha aggiunto il veicolo {}", currentUser.getId(), vehicle.getId());
         return toDTO(vehicle);
     }
+
+
+    private String normalizePlate(String plate) {
+        if (plate == null) return null;
+        String cleaned = plate.trim().toUpperCase().replaceAll("\\s+", "");
+        return cleaned.isEmpty() ? null : cleaned;
+    }
+
 
     @Transactional
     public VehicleResponseDTO updateVehicle(User currentUser, UUID vehicleId, UpdateVehicleRequestDTO body) {
@@ -75,11 +85,15 @@ public class VehicleService {
         if (body.vin() != null) vehicle.setVin(body.vin());
         if (body.color() != null) vehicle.setColor(body.color());
 
-        if (body.licensePlate() != null && !body.licensePlate().equals(vehicle.getLicensePlate())) {
-            if (vehicleRepository.existsByLicensePlate(body.licensePlate())) {
-                throw new BadRequestException("Targa già registrata");
+        if (body.licensePlate() != null) {
+            String normalizedPlate = normalizePlate(body.licensePlate());
+
+            if (normalizedPlate != null && !normalizedPlate.equals(vehicle.getLicensePlate())) {
+                if (vehicleRepository.existsByLicensePlate(normalizedPlate)) {
+                    throw new BadRequestException("Targa già registrata");
+                }
             }
-            vehicle.setLicensePlate(body.licensePlate());
+            vehicle.setLicensePlate(normalizedPlate);
         }
 
         vehicleRepository.save(vehicle);
@@ -124,6 +138,50 @@ public class VehicleService {
                 .stream()
                 .map(this::toDTO)
                 .toList();
+    }
+
+    @Transactional
+    public VehicleResponseDTO updateVehiclePhoto(User currentUser, UUID vehicleId, MultipartFile photo) {
+        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Veicolo non trovato nel tuo garage"));
+        if (photo == null || photo.isEmpty()) {
+            throw new BadRequestException("Nessuna immagine fornita");
+        }
+        String oldPublicId = vehicle.getPhotoPublicId();
+        try {
+            CloudinaryService.UploadResult result = cloudinaryService.uploadImage(photo, "riders-app/vehicles");
+            vehicle.setPhotoUrl(result.url());
+            vehicle.setPhotoPublicId(result.publicId());
+        } catch (IOException e) {
+            throw new BadRequestException("Errore durante il caricamento della foto");
+        }
+        vehicleRepository.save(vehicle);
+        if (oldPublicId != null) {
+            try {
+                cloudinaryService.deleteImage(oldPublicId);
+            } catch (IOException e) {
+                log.warn("Impossibile cancellare la vecchia foto {} del veicolo {}", oldPublicId, vehicleId, e);
+            }
+        }
+        return toDTO(vehicle);
+    }
+
+    @Transactional
+    public VehicleResponseDTO deleteVehiclePhoto(User currentUser, UUID vehicleId) {
+        Vehicle vehicle = vehicleRepository.findByIdAndUserId(vehicleId, currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Veicolo non trovato nel tuo garage"));
+        String publicId = vehicle.getPhotoPublicId();
+        vehicle.setPhotoUrl(null);
+        vehicle.setPhotoPublicId(null);
+        vehicleRepository.save(vehicle);
+        if (publicId != null) {
+            try {
+                cloudinaryService.deleteImage(publicId);
+            } catch (IOException e) {
+                log.warn("Impossibile cancellare la foto {} del veicolo {}", publicId, vehicleId, e);
+            }
+        }
+        return toDTO(vehicle);
     }
 
 

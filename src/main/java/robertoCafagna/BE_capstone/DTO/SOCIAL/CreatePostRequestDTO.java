@@ -6,6 +6,7 @@ public record CreatePostRequestDTO(
         String text,
         UUID eventId,
         UUID rideId,
+        UUID vehicleId,
         Boolean includeRoutePhoto
 ) {
 }

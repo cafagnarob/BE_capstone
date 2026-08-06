@@ -75,6 +75,10 @@ public class Event {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(length = 255)
+    @Setter
+    private String meetingPointAddress;
+
     @OneToMany(
             mappedBy = "event",
             cascade = CascadeType.ALL,

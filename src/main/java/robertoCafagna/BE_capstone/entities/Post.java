@@ -57,6 +57,11 @@ public class Post {
     private List<PostMedia> media = new ArrayList<>();
 
 
+    @ManyToOne
+    @JoinColumn(name = "vehicle_id")
+    @Setter
+    private Vehicle vehicle;
+
     @OneToMany(
             mappedBy = "post",
             cascade = CascadeType.ALL,

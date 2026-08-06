@@ -13,10 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.EVENT.*;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.config.RouteMapper;
-import robertoCafagna.BE_capstone.entities.Event;
-import robertoCafagna.BE_capstone.entities.Route;
-import robertoCafagna.BE_capstone.entities.RouteWaypoint;
-import robertoCafagna.BE_capstone.entities.User;
+import robertoCafagna.BE_capstone.entities.*;
 import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
@@ -28,6 +25,7 @@ import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
 import robertoCafagna.BE_capstone.specifications.EventSpecifications;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -42,6 +40,7 @@ public class EventService {
     private final EventAccessChecker eventAccessChecker;
     private final PasswordEncoder passwordEncoder;
     private final RouteRepository routeRepository;
+    private final ReverseGeocodingService reverseGeocodingService;
 
 
     @Transactional
@@ -65,6 +64,10 @@ public class EventService {
 
         RouteWaypoint startPoint = route.getWaypoints().get(0);
 
+        String meetingPointAddress = reverseGeocodingService.reverseGeocode(
+                startPoint.getLatitude(), startPoint.getLongitude()
+        );
+
         boolean autoApprove = body.visibility() == EventVisibility.PUBLIC && body.autoApprove();
 
         Event event = new Event(
@@ -77,9 +80,11 @@ public class EventService {
                 autoApprove
         );
 
+        event.setMeetingPointAddress(meetingPointAddress);
+
         eventRepository.save(event);
         log.info("Utente {} ha creato l'evento {}", organizer.getId(), event.getId());
-        return toDetailDTO(event, 0);
+        return toDetailDTO(organizer, event, 0);
     }
 
     @Transactional
@@ -95,7 +100,7 @@ public class EventService {
         if (body.maxParticipants() != null) event.setMaxParticipants(body.maxParticipants());
 
         eventRepository.save(event);
-        return toDetailDTO(event, countAccepted(eventId));
+        return toDetailDTO(currentUser, event, countAccepted(eventId));
     }
 
     @Transactional
@@ -123,7 +128,7 @@ public class EventService {
             throw new UnauthorizedException("Non hai accesso ai dettagli di questo evento");
         }
 
-        return toDetailDTO(event, countAccepted(eventId));
+        return toDetailDTO(currentUser, event, countAccepted(eventId));
     }
 
 
@@ -142,30 +147,34 @@ public class EventService {
         if (size <= 0 || size > 50) size = 20;
         if (page < 0) page = 0;
 
-        Specification<Event> spec = Specification
-                .where(EventSpecifications.visibilityIn(List.of(EventVisibility.PUBLIC, EventVisibility.PRIVATE_CODE)))
-                .and(EventSpecifications.hasStatus(EventStatus.ACTIVE));
+        List<Specification<Event>> specs = new ArrayList<>();
+
+        specs.add(EventSpecifications.visibilityIn(
+                List.of(EventVisibility.PUBLIC, EventVisibility.PRIVATE_CODE)));
+        specs.add(EventSpecifications.hasStatus(EventStatus.ACTIVE));
 
         if (filters.title() != null && !filters.title().isBlank()) {
-            spec = spec.and(EventSpecifications.titleContains(filters.title()));
+            specs.add(EventSpecifications.titleContains(filters.title().trim()));
         }
         if (filters.dateFrom() != null) {
-            spec = spec.and(EventSpecifications.startDateAfter(filters.dateFrom()));
+            specs.add(EventSpecifications.startDateAfter(filters.dateFrom()));
         }
         if (filters.dateTo() != null) {
-            spec = spec.and(EventSpecifications.startDateBefore(filters.dateTo()));
+            specs.add(EventSpecifications.startDateBefore(filters.dateTo()));
         }
         if (filters.lat() != null && filters.lng() != null && filters.radiusKm() != null) {
+            double cosLat = Math.max(Math.cos(Math.toRadians(filters.lat())), 0.01);
             double deltaLat = filters.radiusKm() / 111.0;
-            double deltaLng = filters.radiusKm() / (111.0 * Math.cos(Math.toRadians(filters.lat())));
-            spec = spec.and(EventSpecifications.withinBoundingBox(
+            double deltaLng = filters.radiusKm() / (111.0 * cosLat);
+
+            specs.add(EventSpecifications.withinBoundingBox(
                     filters.lat() - deltaLat, filters.lat() + deltaLat,
                     filters.lng() - deltaLng, filters.lng() + deltaLng
             ));
         }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("startDateTime"));
-        return eventRepository.findAll(spec, pageable).map(e -> toSummaryDTO(currentUser, e));
+        return eventRepository.findAll(Specification.allOf(specs), pageable).map(e -> toSummaryDTO(currentUser, e));
     }
 
 
@@ -197,25 +206,58 @@ public class EventService {
         return participationRepository.countByEventIdAndStatus(eventId, ParticipationStatus.ACCEPTED);
     }
 
+    public Page<EventSummaryDTO> getOrganizedEvents(User currentUser, int page, int size) {
+        Pageable pageable = buildPageable(page, size);
+        return eventRepository.findByOrganizerIdOrderByStartDateTimeDesc(currentUser.getId(), pageable)
+                .map(e -> toSummaryDTO(currentUser, e));
+    }
+
+    public Page<EventSummaryDTO> getParticipatingEvents(User currentUser, int page, int size) {
+        Pageable pageable = buildPageable(page, size);
+        return eventRepository.findParticipatingEvents(
+                currentUser.getId(),
+                List.of(ParticipationStatus.PENDING, ParticipationStatus.ACCEPTED),
+                pageable
+        ).map(e -> toSummaryDTO(currentUser, e));
+    }
+
+    private Pageable buildPageable(int page, int size) {
+        if (size <= 0 || size > 50) size = 20;
+        if (page < 0) page = 0;
+        return PageRequest.of(page, size);
+    }
+
 
     private EventSummaryDTO toSummaryDTO(User currentUser, Event event) {
+        boolean isOrganizer = event.getOrganizer().getId().equals(currentUser.getId());
         boolean locked = event.getVisibility() != EventVisibility.PUBLIC
                 && !eventAccessChecker.canSeeDetail(currentUser, event);
         return new EventSummaryDTO(
                 event.getId(), event.getTitle(), event.getOrganizer().getUsername(),
                 event.getStartDateTime(), event.getMaxParticipants(),
-                countAccepted(event.getId()), event.getVisibility(), event.getStatus(), locked
+                countAccepted(event.getId()), event.getVisibility(), event.getStatus(), locked,
+                myStatus(currentUser, event.getId()), isOrganizer, locked ? null : event.getMeetingPointLat(),
+                locked ? null : event.getMeetingPointLng()
         );
     }
 
-    private EventDetailDTO toDetailDTO(Event event, long currentParticipants) {
+
+    private EventDetailDTO toDetailDTO(User currentUser, Event event, long currentParticipants) {
+        boolean isOrganizer = event.getOrganizer().getId().equals(currentUser.getId());
         return new EventDetailDTO(
                 event.getId(), event.getTitle(), event.getDescription(),
                 event.getOrganizer().getUsername(), event.getStartDateTime(), event.getEndDateTime(),
-                event.getMeetingPointLat(), event.getMeetingPointLng(), event.getMaxParticipants(),
+                event.getMeetingPointLat(), event.getMeetingPointLng(), event.getMeetingPointAddress(), event.getMaxParticipants(),
                 currentParticipants, event.getVisibility(), event.isAutoApprove(),
-                event.getStatus(), event.getCreatedAt(), routeMapper.toDTO(event.getRoute())
-                
+                event.getStatus(), event.getCreatedAt(), routeMapper.toDTO(event.getRoute()),
+                myStatus(currentUser, event.getId()), isOrganizer
         );
+    }
+
+
+    private ParticipationStatus myStatus(User currentUser, UUID eventId) {
+        return participationRepository.findByEventIdAndUserId(eventId, currentUser.getId())
+                .map(Participation::getStatus)
+                .orElse(null);
     }
 }

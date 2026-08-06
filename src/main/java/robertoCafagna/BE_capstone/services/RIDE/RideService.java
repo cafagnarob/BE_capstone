@@ -16,9 +16,9 @@ import robertoCafagna.BE_capstone.entities.Vehicle;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
+import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RidePointRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RideRepository;
-import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -151,7 +151,8 @@ public class RideService {
 
     private VehicleSummaryDTO toVehicleSummary(Vehicle vehicle) {
         if (vehicle == null) return null;
-        return new VehicleSummaryDTO(vehicle.getId(), vehicle.getNickname(), vehicle.getPhotoUrl());
+        return new VehicleSummaryDTO(vehicle.getId(), vehicle.getNickname(), vehicle.getPhotoUrl(), vehicle.getModel().getBrand().getName(),
+                vehicle.getModel().getName());
     }
 
 

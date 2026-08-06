@@ -3,6 +3,7 @@ package robertoCafagna.BE_capstone.repositories.GARAGE;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 import robertoCafagna.BE_capstone.entities.MotorcycleModel;
 
@@ -10,7 +11,7 @@ import java.util.UUID;
 
 @Repository
 public interface MotorcycleModelRepository
-        extends JpaRepository<MotorcycleModel, UUID> {
+        extends JpaRepository<MotorcycleModel, UUID>, JpaSpecificationExecutor<MotorcycleModel> {
 
     Page<MotorcycleModel> findByBrandId(UUID brandId, Pageable pageable);
 
@@ -22,4 +23,6 @@ public interface MotorcycleModelRepository
     );
 
     boolean existsByBrandName(String brandName);
+
+
 }

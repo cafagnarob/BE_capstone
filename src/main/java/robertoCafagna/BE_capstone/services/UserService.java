@@ -21,8 +21,8 @@ import robertoCafagna.BE_capstone.entities.UserProfile;
 import robertoCafagna.BE_capstone.entities.Vehicle;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
-import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
+import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 
 import java.io.IOException;
 import java.util.List;
@@ -259,12 +259,22 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("Link non trovato"));
     }
 
+    @Transactional
+    public MyProfileResponseDTO clearCurrentVehicle(User currentUser) {
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+        user.setCurrentVehicle(null);
+        userRepository.save(user);
+        return toMyProfileDTO(user);
+    }
+
 
     // --- mapping  ---
 
     private VehicleSummaryDTO toVehicleSummary(Vehicle vehicle) {
         if (vehicle == null) return null;
-        return new VehicleSummaryDTO(vehicle.getId(), vehicle.getNickname(), vehicle.getPhotoUrl());
+        return new VehicleSummaryDTO(vehicle.getId(), vehicle.getNickname(), vehicle.getPhotoUrl(), vehicle.getModel().getBrand().getName(),
+                vehicle.getModel().getName());
     }
 
     private MyProfileResponseDTO toMyProfileDTO(User user) {
@@ -284,6 +294,7 @@ public class UserService {
     private PublicProfileResponseDTO toPublicProfileDTO(User user) {
         UserProfile profile = user.getProfile();
         return new PublicProfileResponseDTO(
+                user.getId(),
                 user.getUsername(), user.getName(), user.getSurname(), user.getProfilePicture(),
                 profile != null ? profile.getDescription() : null,
                 profile != null ? profile.getLocation() : null,
