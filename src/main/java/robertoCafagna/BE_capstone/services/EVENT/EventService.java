@@ -159,7 +159,7 @@ public class EventService {
             double cosLat = Math.max(Math.cos(Math.toRadians(filters.lat())), 0.01);
             double deltaLat = filters.radiusKm() / 111.0;
             double deltaLng = filters.radiusKm() / (111.0 * cosLat);
-           
+
             specs.add(EventSpecifications.withinBoundingBox(
                     filters.lat() - deltaLat, filters.lat() + deltaLat,
                     filters.lng() - deltaLng, filters.lng() + deltaLng
@@ -229,7 +229,8 @@ public class EventService {
                 event.getId(), event.getTitle(), event.getOrganizer().getUsername(),
                 event.getStartDateTime(), event.getMaxParticipants(),
                 countAccepted(event.getId()), event.getVisibility(), event.getStatus(), locked,
-                myStatus(currentUser, event.getId()), isOrganizer
+                myStatus(currentUser, event.getId()), isOrganizer, locked ? null : event.getMeetingPointLat(),
+                locked ? null : event.getMeetingPointLng()
         );
     }
 
