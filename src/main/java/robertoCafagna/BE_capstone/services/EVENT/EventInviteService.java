@@ -11,9 +11,8 @@ import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.enums.InviteStatus;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
+import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
-import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
-
 import robertoCafagna.BE_capstone.repositories.EVENT.EventInviteRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
@@ -21,6 +20,7 @@ import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 import robertoCafagna.BE_capstone.services.SOCIAL.NotificationService;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -39,7 +39,7 @@ public class EventInviteService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
         if (!event.getOrganizer().getId().equals(organizer.getId())) {
-            throw new UnauthorizedException("Non sei l'organizzatore di questo evento");
+            throw new ForbiddenException("Non sei l'organizzatore di questo evento");
         }
 
         User invitedUser = userRepository.findByUsername(username)
@@ -48,10 +48,19 @@ public class EventInviteService {
         if (invitedUser.getId().equals(organizer.getId())) {
             throw new BadRequestException("Non puoi invitare te stesso");
         }
-        if (eventInviteRepository.findByEventIdAndInvitedUserId(eventId, invitedUser.getId()).isPresent()) {
-            throw new BadRequestException("Questo utente è già stato invitato");
-        }
+        Optional<EventInvite> existing = eventInviteRepository.findByEventIdAndInvitedUserId(eventId, invitedUser.getId());
 
+        if (existing.isPresent()) {
+            EventInvite invite = existing.get();
+            if (invite.getStatus() != InviteStatus.REJECTED) {
+                throw new BadRequestException("Questo utente è già stato invitato");
+            }
+            invite.setStatus(InviteStatus.PENDING);
+            eventInviteRepository.save(invite);
+            notificationService.notifyEventInvite(invitedUser, event);
+            return toDTO(invite);
+        }
+        
         EventInvite invite = new EventInvite(event, invitedUser);
         eventInviteRepository.save(invite);
         notificationService.notifyEventInvite(invitedUser, event);
@@ -64,7 +73,7 @@ public class EventInviteService {
                 .orElseThrow(() -> new NotFoundException("Invito non trovato"));
 
         if (!invite.getInvitedUser().getId().equals(currentUser.getId())) {
-            throw new UnauthorizedException("Questo invito non è per te");
+            throw new ForbiddenException("Questo invito non è per te");
         }
         if (invite.getStatus() != InviteStatus.PENDING) {
             throw new BadRequestException("Hai già risposto a questo invito");
@@ -87,7 +96,7 @@ public class EventInviteService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
         if (!event.getOrganizer().getId().equals(organizer.getId())) {
-            throw new UnauthorizedException("Non sei l'organizzatore di questo evento");
+            throw new ForbiddenException("Non sei l'organizzatore di questo evento");
         }
         return eventInviteRepository.findByEventId(eventId)
                 .stream().map(this::toDTO).toList();
