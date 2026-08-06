@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import robertoCafagna.BE_capstone.DTO.EVENT.EventSummaryDTO;
+import robertoCafagna.BE_capstone.DTO.GARAGE.VehicleSummaryDTO;
 import robertoCafagna.BE_capstone.DTO.RIDE.RideSummaryDTO;
 import robertoCafagna.BE_capstone.DTO.SOCIAL.CreatePostRequestDTO;
 import robertoCafagna.BE_capstone.DTO.SOCIAL.PostMediaResponseDTO;
@@ -21,6 +22,7 @@ import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
+import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RideRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.LikeRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.PostCommentRepository;
@@ -46,6 +48,7 @@ public class PostService {
     private final PostCommentRepository postCommentRepository;
     private final CloudinaryService cloudinaryService;
     private final EventAccessChecker eventAccessChecker;
+    private final VehicleRepository vehicleRepository;
 
 
     @Transactional
@@ -56,6 +59,8 @@ public class PostService {
         Post post = new Post(currentUser, event, body.text());
         post.setRide(ride);
 
+        Vehicle vehicle = resolveVehicle(currentUser, body.vehicleId());
+
         List<PostMedia> media = buildUploadedMedia(post, files);
         media.addAll(buildRouteMedia(post, ride, body.includeRoutePhoto()));
 
@@ -63,6 +68,7 @@ public class PostService {
             throw new BadRequestException("Il post deve contenere almeno un'immagine");
         }
 
+        post.setVehicle(vehicle);
         post.setMedia(media);
         postRepository.save(post);
         log.info("Utente {} ha creato il post {}", currentUser.getId(), post.getId());
@@ -180,6 +186,12 @@ public class PostService {
         return PageRequest.of(page, size);
     }
 
+    private Vehicle resolveVehicle(User currentUser, UUID vehicleId) {
+        if (vehicleId == null) return null;
+        return vehicleRepository.findByIdAndUserId(vehicleId, currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Veicolo non trovato nel tuo garage"));
+    }
+
     // --- mapping ---
 
     private PostResponseDTO toDTO(User currentUser, Post post) {
@@ -196,6 +208,7 @@ public class PostService {
                 post.getText(), post.getCreatedAt(),
                 post.getEvent() != null ? toEventSummary(currentUser, post.getEvent()) : null,
                 post.getRide() != null ? toRideSummary(post.getRide()) : null,
+                post.getVehicle() != null ? toVehicleSummary(post.getVehicle()) : null,
                 mediaDTOs, likeCount, commentCount, liked
         );
     }
@@ -205,8 +218,9 @@ public class PostService {
         return new EventSummaryDTO(
                 event.getId(), event.getTitle(), event.getOrganizer().getUsername(),
                 event.getStartDateTime(), event.getMaxParticipants(), 0,
-                event.getVisibility(), event.getStatus(), locked, null, false
-        );
+                event.getVisibility(), event.getStatus(), locked, null, false,
+                locked ? null : event.getMeetingPointLat(),
+                locked ? null : event.getMeetingPointLng());
     }
 
     private RideSummaryDTO toRideSummary(Ride ride) {
@@ -215,5 +229,12 @@ public class PostService {
                 ride.getStartedAt(), ride.getEndedAt(), ride.getDistanceKm(), ride.getAvgSpeedKmH(),
                 ride.getEndedAt() == null
         );
+
+    }
+
+    private VehicleSummaryDTO toVehicleSummary(Vehicle vehicle) {
+        if (vehicle == null) return null;
+        return new VehicleSummaryDTO(vehicle.getId(), vehicle.getNickname(), vehicle.getPhotoUrl(), vehicle.getModel().getBrand().getName(),
+                vehicle.getModel().getName());
     }
 }
