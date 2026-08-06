@@ -19,8 +19,8 @@ import robertoCafagna.BE_capstone.entities.*;
 import robertoCafagna.BE_capstone.enums.FeedType;
 import robertoCafagna.BE_capstone.enums.MediaType;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
+import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
-import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RideRepository;
@@ -101,7 +101,7 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new NotFoundException("Post non trovato"));
         if (!post.getUser().getId().equals(currentUser.getId())) {
-            throw new UnauthorizedException("Non sei l'autore di questo post");
+            throw new ForbiddenException("Non sei l'autore di questo post");
         }
 
         List<String> publicIds = post.getMedia().stream()
@@ -130,7 +130,7 @@ public class PostService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
         if (!eventAccessChecker.canSeeDetail(currentUser, event)) {
-            throw new UnauthorizedException("Non hai accesso a questo evento");
+            throw new ForbiddenException("Non hai accesso a questo evento");
         }
         return event;
     }
@@ -141,7 +141,7 @@ public class PostService {
         Ride ride = rideRepository.findById(rideId)
                 .orElseThrow(() -> new NotFoundException("Giro non trovato"));
         if (!ride.getUser().getId().equals(currentUser.getId())) {
-            throw new UnauthorizedException("Non puoi condividere un giro che non è tuo");
+            throw new ForbiddenException("Non puoi condividere un giro che non è tuo");
         }
         return ride;
     }
