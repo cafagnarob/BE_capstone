@@ -13,8 +13,8 @@ import robertoCafagna.BE_capstone.DTO.SOCIAL.CreateCommentRequestDTO;
 import robertoCafagna.BE_capstone.entities.Post;
 import robertoCafagna.BE_capstone.entities.PostComment;
 import robertoCafagna.BE_capstone.entities.User;
+import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
-import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.PostCommentRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.PostRepository;
 
@@ -67,7 +67,7 @@ public class PostCommentService {
         boolean isPostOwner = comment.getPost().getUser().getId().equals(currentUser.getId());
 
         if (!isAuthor && !isPostOwner) {
-            throw new UnauthorizedException("Non puoi eliminare questo commento");
+            throw new ForbiddenException("Non puoi eliminare questo commento");
         }
 
         postCommentRepository.delete(comment);
