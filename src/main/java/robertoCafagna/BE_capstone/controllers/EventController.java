@@ -88,8 +88,16 @@ public class EventController {
             @PathVariable UUID eventId,
             @RequestBody @Valid RegenerateAccessCodeRequestDTO body
     ) {
-        eventService.regenerateAccessCode(currentUser, eventId, body.newAccessCode());
+        eventService.regenerateAccessCode(currentUser, eventId, body);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{eventId}/access-code")
+    public ResponseEntity<AccessCodeResponseDTO> getAccessCode(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID eventId
+    ) {
+        return ResponseEntity.ok(eventService.getAccessCode(currentUser, eventId));
     }
 
     @GetMapping("/organized")
