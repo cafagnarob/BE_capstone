@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import robertoCafagna.BE_capstone.DTO.ERROR.ErrorDTO;
 import robertoCafagna.BE_capstone.DTO.ERROR.ErrorListDTO;
 
@@ -69,5 +70,11 @@ public class ErrorHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorDTO handleAuthenticationException(AuthenticationException ex) {
         return new ErrorDTO("Credenziali non valide", LocalDateTime.now());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    public ErrorDTO handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        return new ErrorDTO("Il file caricato supera la dimensione massima consentita", LocalDateTime.now());
     }
 }
