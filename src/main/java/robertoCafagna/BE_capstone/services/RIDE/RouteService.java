@@ -14,8 +14,8 @@ import robertoCafagna.BE_capstone.entities.Route;
 import robertoCafagna.BE_capstone.entities.RouteWaypoint;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
+import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
-import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
 
@@ -86,7 +86,7 @@ public class RouteService {
         Route route = routeRepository.findById(routeId)
                 .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
         if (!route.getCreator().getId().equals(currentUser.getId())) {
-            throw new UnauthorizedException("Non sei il creatore di questo percorso");
+            throw new ForbiddenException("Non sei il creatore di questo percorso");
         }
         if (eventRepository.existsByRouteId(routeId)) {
             throw new BadRequestException("Non puoi eliminare un percorso usato da uno o più eventi");
@@ -101,7 +101,7 @@ public class RouteService {
                 .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
 
         if (!original.isImportable()) {
-            throw new UnauthorizedException("Il creatore non ha reso importabile questo percorso");
+            throw new ForbiddenException("Il creatore non ha reso importabile questo percorso");
         }
 
         // copia identica: stessa geometria/distanza/durata, non richiamo di nuovo Mapbox
@@ -132,7 +132,7 @@ public class RouteService {
         Route route = routeRepository.findById(routeId)
                 .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
         if (!route.getCreator().getId().equals(currentUser.getId())) {
-            throw new UnauthorizedException("Non sei il creatore di questo percorso");
+            throw new ForbiddenException("Non sei il creatore di questo percorso");
         }
         route.setImportable(value);
         routeRepository.save(route);
