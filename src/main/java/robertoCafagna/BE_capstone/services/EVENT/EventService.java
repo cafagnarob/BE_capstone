@@ -40,6 +40,7 @@ public class EventService {
     private final EventAccessChecker eventAccessChecker;
     private final PasswordEncoder passwordEncoder;
     private final RouteRepository routeRepository;
+    private final ReverseGeocodingService reverseGeocodingService;
 
 
     @Transactional
@@ -63,6 +64,10 @@ public class EventService {
 
         RouteWaypoint startPoint = route.getWaypoints().get(0);
 
+        String meetingPointAddress = reverseGeocodingService.reverseGeocode(
+                startPoint.getLatitude(), startPoint.getLongitude()
+        );
+
         boolean autoApprove = body.visibility() == EventVisibility.PUBLIC && body.autoApprove();
 
         Event event = new Event(
@@ -74,6 +79,8 @@ public class EventService {
                         passwordEncoder.encode(body.accessCode()) : null,
                 autoApprove
         );
+
+        event.setMeetingPointAddress(meetingPointAddress);
 
         eventRepository.save(event);
         log.info("Utente {} ha creato l'evento {}", organizer.getId(), event.getId());
@@ -240,7 +247,7 @@ public class EventService {
         return new EventDetailDTO(
                 event.getId(), event.getTitle(), event.getDescription(),
                 event.getOrganizer().getUsername(), event.getStartDateTime(), event.getEndDateTime(),
-                event.getMeetingPointLat(), event.getMeetingPointLng(), event.getMaxParticipants(),
+                event.getMeetingPointLat(), event.getMeetingPointLng(), event.getMeetingPointAddress(), event.getMaxParticipants(),
                 currentParticipants, event.getVisibility(), event.isAutoApprove(),
                 event.getStatus(), event.getCreatedAt(), routeMapper.toDTO(event.getRoute()),
                 myStatus(currentUser, event.getId()), isOrganizer
