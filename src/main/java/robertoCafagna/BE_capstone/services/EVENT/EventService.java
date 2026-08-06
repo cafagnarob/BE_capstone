@@ -18,6 +18,7 @@ import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
+import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
@@ -75,8 +76,7 @@ public class EventService {
                 body.startDateTime(), body.endDateTime(),
                 route, startPoint.getLatitude(), startPoint.getLongitude(),
                 body.maxParticipants(), body.visibility(),
-                body.visibility() == EventVisibility.PRIVATE_CODE ?
-                        passwordEncoder.encode(body.accessCode()) : null,
+                body.visibility() == EventVisibility.PRIVATE_CODE ? body.accessCode() : null,
                 autoApprove
         );
 
@@ -125,7 +125,7 @@ public class EventService {
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
 
         if (!eventAccessChecker.canSeeDetail(currentUser, event)) {
-            throw new UnauthorizedException("Non hai accesso ai dettagli di questo evento");
+            throw new ForbiddenException("Non hai accesso ai dettagli di questo evento");
         }
 
         return toDetailDTO(currentUser, event, countAccepted(eventId));
@@ -179,16 +179,28 @@ public class EventService {
 
 
     @Transactional
-    public void regenerateAccessCode(User currentUser, UUID eventId, String newAccessCode) {
+    public void regenerateAccessCode(User currentUser, UUID eventId, RegenerateAccessCodeRequestDTO body) {
         Event event = getOwnedEvent(currentUser, eventId);
 
         if (event.getVisibility() != EventVisibility.PRIVATE_CODE) {
             throw new BadRequestException("Questo evento non usa un codice di accesso");
         }
+        if (!passwordEncoder.matches(body.currentPassword(), currentUser.getPassword())) {
+            throw new BadRequestException("Password non corretta");
+        }
 
-        event.setAccessCode(passwordEncoder.encode(newAccessCode));
+        event.setAccessCode(body.newAccessCode().trim().toUpperCase());
         eventRepository.save(event);
         log.info("Codice di accesso rigenerato per l'evento {}", eventId);
+    }
+
+
+    public AccessCodeResponseDTO getAccessCode(User currentUser, UUID eventId) {
+        Event event = getOwnedEvent(currentUser, eventId);
+        if (event.getVisibility() != EventVisibility.PRIVATE_CODE) {
+            throw new BadRequestException("Questo evento non usa un codice di accesso");
+        }
+        return new AccessCodeResponseDTO(event.getAccessCode());
     }
 
 
@@ -196,7 +208,7 @@ public class EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
         if (!event.getOrganizer().getId().equals(currentUser.getId())) {
-            throw new UnauthorizedException("Non sei l'organizzatore di questo evento");
+            throw new ForbiddenException("Non sei l'organizzatore di questo evento");
         }
         return event;
     }
