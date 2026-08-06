@@ -77,4 +77,10 @@ public class ErrorHandler {
     public ErrorDTO handleMaxUploadSize(MaxUploadSizeExceededException ex) {
         return new ErrorDTO("Il file caricato supera la dimensione massima consentita", LocalDateTime.now());
     }
+
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorDTO handleForbidden(ForbiddenException ex) {
+        return new ErrorDTO(ex.getMessage(), LocalDateTime.now());
+    }
 }
