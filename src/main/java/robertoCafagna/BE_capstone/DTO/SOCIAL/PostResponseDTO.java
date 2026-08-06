@@ -1,6 +1,7 @@
 package robertoCafagna.BE_capstone.DTO.SOCIAL;
 
 import robertoCafagna.BE_capstone.DTO.EVENT.EventSummaryDTO;
+import robertoCafagna.BE_capstone.DTO.GARAGE.VehicleSummaryDTO;
 import robertoCafagna.BE_capstone.DTO.RIDE.RideSummaryDTO;
 
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ public record PostResponseDTO(
         LocalDateTime createdAt,
         EventSummaryDTO event,
         RideSummaryDTO ride,
+        VehicleSummaryDTO vehicle,
         List<PostMediaResponseDTO> media,
         long likeCount,
         long commentCount,
