@@ -26,6 +26,7 @@ public record EventDetailDTO(
         LocalDateTime createdAt,
         RouteResponseDTO route,
         ParticipationStatus myParticipationStatus,
-        boolean organizer
+        boolean organizer,
+        boolean locked
 ) {
 }
