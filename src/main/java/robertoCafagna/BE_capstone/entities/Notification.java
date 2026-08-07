@@ -46,8 +46,23 @@ public class Notification {
     @Enumerated(EnumType.STRING)
     private ReferenceType referenceType;
 
+    @ManyToOne
+    @JoinColumn(name = "actor_id")
+    @ToString.Exclude
+    private User actor;
+
+
     public Notification(User user, NotificationType type, String message, UUID referenceId, ReferenceType referenceType) {
         this.user = user;
+        this.type = type;
+        this.message = message;
+        this.referenceId = referenceId;
+        this.referenceType = referenceType;
+    }
+
+    public Notification(User user, User actor, NotificationType type, String message, UUID referenceId, ReferenceType referenceType) {
+        this.user = user;
+        this.actor = actor;
         this.type = type;
         this.message = message;
         this.referenceId = referenceId;
