@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.EVENT.*;
+import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.config.RouteMapper;
 import robertoCafagna.BE_capstone.entities.*;
@@ -84,7 +85,7 @@ public class EventService {
 
         eventRepository.save(event);
         log.info("Utente {} ha creato l'evento {}", organizer.getId(), event.getId());
-        return toDetailDTO(organizer, event, 0);
+        return toDetailDTO(organizer, event, 0, false);
     }
 
     @Transactional
@@ -100,7 +101,7 @@ public class EventService {
         if (body.maxParticipants() != null) event.setMaxParticipants(body.maxParticipants());
 
         eventRepository.save(event);
-        return toDetailDTO(currentUser, event, countAccepted(eventId));
+        return toDetailDTO(currentUser, event, countAccepted(eventId), false);
     }
 
     @Transactional
@@ -124,11 +125,15 @@ public class EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
 
-        if (!eventAccessChecker.canSeeDetail(currentUser, event)) {
-            throw new ForbiddenException("Non hai accesso ai dettagli di questo evento");
+        if (eventAccessChecker.canSeeDetail(currentUser, event)) {
+            return toDetailDTO(currentUser, event, countAccepted(eventId), false);
         }
 
-        return toDetailDTO(currentUser, event, countAccepted(eventId));
+        if (event.getVisibility() == EventVisibility.PRIVATE_CODE) {
+            return toLockedDetailDTO(currentUser, event);
+        }
+
+        throw new ForbiddenException("Non hai accesso ai dettagli di questo evento");
     }
 
 
@@ -254,7 +259,25 @@ public class EventService {
     }
 
 
-    private EventDetailDTO toDetailDTO(User currentUser, Event event, long currentParticipants) {
+    private EventDetailDTO toLockedDetailDTO(User currentUser, Event event) {
+        RouteResponseDTO routeSummary = new RouteResponseDTO(
+                event.getRoute().getId(), event.getRoute().getName(), List.of(), null,
+                event.getRoute().getDistanceMeters(), event.getRoute().getDurationSeconds(),
+                event.getRoute().isAvoidHighways(), event.getRoute().isAvoidTolls(), event.getRoute().isAvoidFerries(),
+                null, event.getRoute().getCreatedAt(), false
+        );
+
+        return new EventDetailDTO(
+                event.getId(), event.getTitle(), event.getDescription(),
+                event.getOrganizer().getUsername(), event.getStartDateTime(), event.getEndDateTime(),
+                null, null, null,
+                event.getMaxParticipants(), countAccepted(event.getId()),
+                event.getVisibility(), event.isAutoApprove(), event.getStatus(), event.getCreatedAt(),
+                routeSummary, myStatus(currentUser, event.getId()), false, true
+        );
+    }
+
+    private EventDetailDTO toDetailDTO(User currentUser, Event event, long currentParticipants, boolean locked) {
         boolean isOrganizer = event.getOrganizer().getId().equals(currentUser.getId());
         return new EventDetailDTO(
                 event.getId(), event.getTitle(), event.getDescription(),
@@ -262,7 +285,7 @@ public class EventService {
                 event.getMeetingPointLat(), event.getMeetingPointLng(), event.getMeetingPointAddress(), event.getMaxParticipants(),
                 currentParticipants, event.getVisibility(), event.isAutoApprove(),
                 event.getStatus(), event.getCreatedAt(), routeMapper.toDTO(event.getRoute()),
-                myStatus(currentUser, event.getId()), isOrganizer
+                myStatus(currentUser, event.getId()), isOrganizer, locked
         );
     }
 
