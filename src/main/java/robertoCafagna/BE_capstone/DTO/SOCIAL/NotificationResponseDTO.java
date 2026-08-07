@@ -13,6 +13,8 @@ public record NotificationResponseDTO(
         boolean read,
         UUID referenceId,
         ReferenceType referenceType,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String actorUsername,
+        String actorProfilePicture
 ) {
 }
