@@ -17,7 +17,6 @@ import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
-import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 import robertoCafagna.BE_capstone.services.SOCIAL.NotificationService;
@@ -40,6 +39,10 @@ public class EventParticipationService {
     public ParticipationResponseDTO join(User currentUser, UUID eventId, JoinEventRequestDTO body) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
+
+        if (event.getParentEvent() != null) {
+            throw new BadRequestException("Partecipa al viaggio completo, non al singolo giorno di viaggio");
+        }
 
         if (event.getOrganizer().getId().equals(currentUser.getId())) {
             throw new BadRequestException("Sei l'organizzatore," +
@@ -126,7 +129,7 @@ public class EventParticipationService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
         if (!event.getOrganizer().getId().equals(organizer.getId())) {
-            throw new UnauthorizedException("Non sei l'organizzatore di questo evento");
+            throw new ForbiddenException("Non sei l'organizzatore di questo evento");
         }
         return participationRepository.findByEventIdAndStatus(eventId, ParticipationStatus.PENDING)
                 .stream().map(this::toDTO).toList();
