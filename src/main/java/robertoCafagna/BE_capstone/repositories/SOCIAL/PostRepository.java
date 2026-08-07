@@ -37,4 +37,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
                 ORDER BY p.createdAt DESC
             """)
     Page<Post> findExploreFeed(@Param("userId") UUID userId, Pageable pageable);
+
+    Page<Post> findByUserIdAndVehicleIdOrderByCreatedAtDesc(UUID userId, UUID vehicleId, Pageable pageable);
+
 }
