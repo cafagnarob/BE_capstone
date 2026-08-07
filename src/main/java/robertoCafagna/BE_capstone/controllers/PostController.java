@@ -72,4 +72,14 @@ public class PostController {
         postService.deletePost(currentUser, postId);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/vehicle/{vehicleId}")
+    public ResponseEntity<Page<PostResponseDTO>> getMyPostsByVehicle(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID vehicleId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(postService.getPostsByVehicle(currentUser, vehicleId, page, size));
+    }
 }
