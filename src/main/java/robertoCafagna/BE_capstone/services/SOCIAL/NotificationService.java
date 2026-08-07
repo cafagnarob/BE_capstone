@@ -61,7 +61,7 @@ public class NotificationService {
 
     @Transactional
     public void notifyNewFollower(User target, User follower) {
-        create(target, NotificationType.FOLLOW,
+        create(target, follower, NotificationType.FOLLOW,
                 follower.getUsername() + " ha iniziato a seguirti",
                 follower.getId(), ReferenceType.USER);
     }
@@ -69,7 +69,7 @@ public class NotificationService {
     @Transactional
     public void notifyNewLike(User postOwner, User liker, Post post) {
         if (postOwner.getId().equals(liker.getId())) return; // non ti notifichi da solo
-        create(postOwner, NotificationType.LIKE,
+        create(postOwner, liker, NotificationType.LIKE,
                 liker.getUsername() + " ha messo like al tuo post",
                 post.getId(), ReferenceType.POST);
     }
@@ -77,48 +77,51 @@ public class NotificationService {
     @Transactional
     public void notifyNewComment(User postOwner, User commenter, Post post) {
         if (postOwner.getId().equals(commenter.getId())) return;
-        create(postOwner, NotificationType.COMMENT,
+        create(postOwner, commenter, NotificationType.COMMENT,
                 commenter.getUsername() + " ha commentato il tuo post",
                 post.getId(), ReferenceType.POST);
     }
 
     @Transactional
     public void notifyEventInvite(User invitedUser, Event event) {
-        create(invitedUser, NotificationType.EVENT_INVITE,
+        create(invitedUser, event.getOrganizer(), NotificationType.EVENT_INVITE,
                 "Sei stato invitato all'evento \"" + event.getTitle() + "\"",
                 event.getId(), ReferenceType.EVENT);
     }
 
     @Transactional
     public void notifyParticipationRequest(User organizer, User requester, Event event) {
-        create(organizer, NotificationType.PARTICIPATION_REQUEST,
+        create(organizer, requester, NotificationType.PARTICIPATION_REQUEST,
                 requester.getUsername() + " ha richiesto di partecipare a \"" + event.getTitle() + "\"",
                 event.getId(), ReferenceType.EVENT);
     }
 
     @Transactional
     public void notifyParticipationAccepted(User participant, Event event) {
-        create(participant, NotificationType.PARTICIPATION_ACCEPTED,
+        create(participant, event.getOrganizer(), NotificationType.PARTICIPATION_ACCEPTED,
                 "La tua richiesta per \"" + event.getTitle() + "\" è stata accettata",
                 event.getId(), ReferenceType.EVENT);
     }
 
     @Transactional
     public void notifyParticipationRejected(User participant, Event event) {
-        create(participant, NotificationType.PARTICIPATION_REJECTED,
+        create(participant, event.getOrganizer(), NotificationType.PARTICIPATION_REJECTED,
                 "La tua richiesta per \"" + event.getTitle() + "\" è stata rifiutata",
                 event.getId(), ReferenceType.EVENT);
     }
 
-    private void create(User recipient, NotificationType type, String message, UUID referenceId, ReferenceType referenceType) {
-        Notification notification = new Notification(recipient, type, message, referenceId, referenceType);
+    private void create(User recipient, User actor, NotificationType type, String message, UUID referenceId, ReferenceType referenceType) {
+        Notification notification = new Notification(recipient, actor, type, message, referenceId, referenceType);
         notificationRepository.save(notification);
     }
+
 
     private NotificationResponseDTO toDTO(Notification n) {
         return new NotificationResponseDTO(
                 n.getId(), n.getType(), n.getMessage(), n.isRead(),
-                n.getReferenceId(), n.getReferenceType(), n.getCreatedAt()
+                n.getReferenceId(), n.getReferenceType(), n.getCreatedAt(),
+                n.getActor() != null ? n.getActor().getUsername() : null,
+                n.getActor() != null ? n.getActor().getProfilePicture() : null
         );
     }
 }
