@@ -2,6 +2,7 @@ package robertoCafagna.BE_capstone.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import robertoCafagna.BE_capstone.DTO.SOCIAL.MyProfileResponseDTO;
 import robertoCafagna.BE_capstone.DTO.USER.ProfileLinkRequestDTO;
 import robertoCafagna.BE_capstone.DTO.USER.PublicProfileResponseDTO;
 import robertoCafagna.BE_capstone.DTO.USER.UpdateProfileRequestDTO;
+import robertoCafagna.BE_capstone.DTO.USER.UserSearchResultDTO;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.services.UserService;
 
@@ -119,5 +121,14 @@ public class UserController {
             @PathVariable UUID linkId
     ) {
         return ResponseEntity.ok(userService.deleteProfileLink(currentUser, linkId));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Page<UserSearchResultDTO>> searchUsers(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(userService.searchUsers(query, page, size));
     }
 }
