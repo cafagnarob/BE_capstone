@@ -2,6 +2,9 @@ package robertoCafagna.BE_capstone.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,10 +14,7 @@ import robertoCafagna.BE_capstone.DTO.AUTH.UpdateUsernameRequestDTO;
 import robertoCafagna.BE_capstone.DTO.ERROR.UpdateEmailRequestDTO;
 import robertoCafagna.BE_capstone.DTO.GARAGE.VehicleSummaryDTO;
 import robertoCafagna.BE_capstone.DTO.SOCIAL.MyProfileResponseDTO;
-import robertoCafagna.BE_capstone.DTO.USER.ProfileLinkRequestDTO;
-import robertoCafagna.BE_capstone.DTO.USER.ProfileLinkResponseDTO;
-import robertoCafagna.BE_capstone.DTO.USER.PublicProfileResponseDTO;
-import robertoCafagna.BE_capstone.DTO.USER.UpdateProfileRequestDTO;
+import robertoCafagna.BE_capstone.DTO.USER.*;
 import robertoCafagna.BE_capstone.entities.ProfileLink;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.entities.UserProfile;
@@ -266,6 +266,19 @@ public class UserService {
         user.setCurrentVehicle(null);
         userRepository.save(user);
         return toMyProfileDTO(user);
+    }
+
+    public Page<UserSearchResultDTO> searchUsers(String query, int page, int size) {
+        if (size <= 0 || size > 50) size = 20;
+        if (page < 0) page = 0;
+        Pageable pageable = PageRequest.of(page, size);
+
+        if (query == null || query.isBlank()) {
+            return Page.empty(pageable);
+        }
+
+        return userRepository.searchActive(query.trim(), pageable)
+                .map(u -> new UserSearchResultDTO(u.getId(), u.getUsername(), u.getName(), u.getSurname(), u.getProfilePicture()));
     }
 
 
