@@ -117,4 +117,13 @@ public class EventController {
     ) {
         return ResponseEntity.ok(eventService.getParticipatingEvents(currentUser, page, size));
     }
+
+    @PostMapping("/{tripId}/days")
+    public ResponseEntity<EventDetailDTO> addDay(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID tripId,
+            @RequestBody @Valid AddEventDayRequestDTO body
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(eventService.addDay(currentUser, tripId, body));
+    }
 }
