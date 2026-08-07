@@ -17,5 +17,7 @@ public interface RideRepository
 
     List<Ride> findByVehicleId(UUID vehicleId);
 
+    Page<Ride> findByUserIdAndVehicleIdOrderByCreatedAtDesc(UUID userId, UUID vehicleId, Pageable pageable);
+
     Optional<Ride> findByUserIdAndEndedAtIsNull(UUID userId);
 }
