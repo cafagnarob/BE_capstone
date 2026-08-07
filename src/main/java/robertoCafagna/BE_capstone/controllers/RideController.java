@@ -45,10 +45,11 @@ public class RideController {
     @GetMapping
     public ResponseEntity<Page<RideSummaryDTO>> getMyRides(
             @AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) UUID vehicleId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(rideService.getUserRides(currentUser, page, size));
+        return ResponseEntity.ok(rideService.getUserRides(currentUser, vehicleId, page, size));
     }
 
     @GetMapping("/{rideId}")
