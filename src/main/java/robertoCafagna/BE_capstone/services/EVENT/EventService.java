@@ -14,14 +14,15 @@ import robertoCafagna.BE_capstone.DTO.EVENT.*;
 import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.config.RouteMapper;
-import robertoCafagna.BE_capstone.entities.*;
+import robertoCafagna.BE_capstone.entities.Event;
+import robertoCafagna.BE_capstone.entities.Participation;
+import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
-import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
@@ -55,33 +56,22 @@ public class EventService {
             throw new BadRequestException("Specificare un codice di accesso per un evento con visibilità PRIVATE_CODE");
         }
 
-        Route route = routeRepository.findById(body.routeId())
-                .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
-        if (!route.getCreator().getId().equals(organizer.getId())) {
-            throw new UnauthorizedException("Non puoi usare un percorso che non hai creato tu");
-        }
-        if (route.getWaypoints().isEmpty()) {
-            throw new BadRequestException("Il percorso selezionato non ha punti validi");
-        }
+        validateEventTypeConstraints(body.type(), body.routeId(), body.meetingPointLat(), body.meetingPointLng());
+        MeetingPoint mp = resolveMeetingPoint(organizer, body.routeId(), body.type(), body.meetingPointLat(), body.meetingPointLng());
 
-        RouteWaypoint startPoint = route.getWaypoints().get(0);
-
-        String meetingPointAddress = reverseGeocodingService.reverseGeocode(
-                startPoint.getLatitude(), startPoint.getLongitude()
-        );
 
         boolean autoApprove = body.visibility() == EventVisibility.PUBLIC && body.autoApprove();
 
         Event event = new Event(
                 organizer, body.title(), body.description(),
                 body.startDateTime(), body.endDateTime(),
-                route, startPoint.getLatitude(), startPoint.getLongitude(),
+                route, mp.lat(), mp.lng(),
                 body.maxParticipants(), body.visibility(),
                 body.visibility() == EventVisibility.PRIVATE_CODE ? body.accessCode() : null,
-                autoApprove
+                autoApprove, body.type()
         );
 
-        event.setMeetingPointAddress(meetingPointAddress);
+        event.setMeetingPointAddress(mp.address());
 
         eventRepository.save(event);
         log.info("Utente {} ha creato l'evento {}", organizer.getId(), event.getId());
