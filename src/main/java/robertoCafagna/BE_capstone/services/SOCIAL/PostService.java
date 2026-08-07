@@ -226,7 +226,9 @@ public class PostService {
                 event.getStartDateTime(), event.getMaxParticipants(), 0,
                 event.getVisibility(), event.getStatus(), locked, null, false,
                 locked ? null : event.getMeetingPointLat(),
-                locked ? null : event.getMeetingPointLng());
+                locked ? null : event.getMeetingPointLng(),
+                event.getType()
+        );
     }
 
     private RideSummaryDTO toRideSummary(Ride ride) {
