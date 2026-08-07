@@ -81,13 +81,16 @@ public class RideService {
         return toDetailDTO(ride, points.stream().map(this::toPointDTO).toList());
     }
 
-    public Page<RideSummaryDTO> getUserRides(User currentUser, int page, int size) {
+    public Page<RideSummaryDTO> getUserRides(User currentUser, UUID vehicleId, int page, int size) {
         if (size <= 0 || size > 50) size = 20;
         if (page < 0) page = 0;
         Pageable pageable = PageRequest.of(page, size);
 
-        return rideRepository.findByUserIdOrderByCreatedAtDesc(currentUser.getId(), pageable)
-                .map(this::toSummaryDTO);
+        Page<Ride> rides = vehicleId != null
+                ? rideRepository.findByUserIdAndVehicleIdOrderByCreatedAtDesc(currentUser.getId(), vehicleId, pageable)
+                : rideRepository.findByUserIdOrderByCreatedAtDesc(currentUser.getId(), pageable);
+
+        return rides.map(this::toSummaryDTO);
     }
 
     public RideDetailDTO getRideById(User currentUser, UUID rideId) {
