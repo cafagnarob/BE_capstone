@@ -167,6 +167,12 @@ public class PostService {
         return media;
     }
 
+    public Page<PostResponseDTO> getPostsByVehicle(User currentUser, UUID vehicleId, int page, int size) {
+        Pageable pageable = buildPageable(page, size);
+        return postRepository.findByUserIdAndVehicleIdOrderByCreatedAtDesc(currentUser.getId(), vehicleId, pageable)
+                .map(p -> toDTO(currentUser, p));
+    }
+
     /**
      * Genera la foto del percorso via Mapbox Static Images API quando l'utente
      * lo richiede su un post collegato a un Ride.
