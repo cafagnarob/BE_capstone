@@ -115,6 +115,20 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+    @Transactional
+    public void notifyAccessCodeRequest(User organizer, User requester, Event event) {
+        create(organizer, requester, NotificationType.ACCESS_CODE_REQUEST,
+                requester.getUsername() + " ha richiesto il codice di accesso per \"" + event.getTitle() + "\"",
+                event.getId(), ReferenceType.EVENT);
+    }
+
+    @Transactional
+    public void notifyAccessCodeGranted(User requester, Event event) {
+        create(requester, event.getOrganizer(), NotificationType.ACCESS_CODE_GRANTED,
+                "Il codice per \"" + event.getTitle() + "\" è " + event.getAccessCode(),
+                event.getId(), ReferenceType.EVENT);
+    }
+
     private NotificationResponseDTO toDTO(Notification n) {
         return new NotificationResponseDTO(
                 n.getId(), n.getType(), n.getMessage(), n.isRead(),
