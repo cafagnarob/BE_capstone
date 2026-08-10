@@ -126,4 +126,41 @@ public class EventController {
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(eventService.addDay(currentUser, tripId, body));
     }
+
+    @PostMapping("/{eventId}/access-requests")
+    public ResponseEntity<Void> requestAccessCode(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID eventId
+    ) {
+        eventService.requestAccessCode(currentUser, eventId);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @GetMapping("/{eventId}/access-requests")
+    public ResponseEntity<List<AccessCodeRequestResponseDTO>> getAccessCodeRequests(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID eventId
+    ) {
+        return ResponseEntity.ok(eventService.getAccessCodeRequests(currentUser, eventId));
+    }
+
+    @PatchMapping("/{eventId}/access-requests/{requestId}/approve")
+    public ResponseEntity<Void> approveAccessCodeRequest(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID eventId,
+            @PathVariable UUID requestId
+    ) {
+        eventService.approveAccessCodeRequest(currentUser, eventId, requestId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{eventId}/access-requests/{requestId}/reject")
+    public ResponseEntity<Void> rejectAccessCodeRequest(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID eventId,
+            @PathVariable UUID requestId
+    ) {
+        eventService.rejectAccessCodeRequest(currentUser, eventId, requestId);
+        return ResponseEntity.noContent().build();
+    }
 }
