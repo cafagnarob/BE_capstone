@@ -15,16 +15,15 @@ import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.config.RouteMapper;
 import robertoCafagna.BE_capstone.entities.*;
-import robertoCafagna.BE_capstone.enums.EventStatus;
-import robertoCafagna.BE_capstone.enums.EventType;
-import robertoCafagna.BE_capstone.enums.EventVisibility;
-import robertoCafagna.BE_capstone.enums.ParticipationStatus;
+import robertoCafagna.BE_capstone.enums.*;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
+import robertoCafagna.BE_capstone.repositories.EVENT.AccessCodeRequestRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
+import robertoCafagna.BE_capstone.services.SOCIAL.NotificationService;
 import robertoCafagna.BE_capstone.specifications.EventSpecifications;
 
 import java.util.ArrayList;
@@ -43,6 +42,8 @@ public class EventService {
     private final PasswordEncoder passwordEncoder;
     private final RouteRepository routeRepository;
     private final ReverseGeocodingService reverseGeocodingService;
+    private final NotificationService notificationService;
+    private final AccessCodeRequestRepository accessCodeRequestRepository;
 
 
     @Transactional
@@ -308,6 +309,88 @@ public class EventService {
         return new MeetingPoint(null, null, null, null);
     }
 
+
+    @Transactional
+    public void requestAccessCode(User currentUser, UUID eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Evento non trovato"));
+
+        if (event.getVisibility() != EventVisibility.PRIVATE_CODE) {
+            throw new BadRequestException("Questo evento non richiede un codice di accesso");
+        }
+        if (event.getParentEvent() != null) {
+            throw new BadRequestException("Richiedi l'accesso dal viaggio completo, non dal singolo giorno");
+        }
+        if (event.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new BadRequestException("Sei l'organizzatore di questo evento");
+        }
+
+        AccessCodeRequest request = accessCodeRequestRepository
+                .findByEventIdAndRequesterId(eventId, currentUser.getId())
+                .orElse(null);
+
+        if (request != null) {
+            if (request.getStatus() != AccessRequestStatus.REJECTED) {
+                throw new BadRequestException("Hai già richiesto il codice per questo evento");
+            }
+            request.setStatus(AccessRequestStatus.PENDING);
+            accessCodeRequestRepository.save(request);
+        } else {
+            request = new AccessCodeRequest(event, currentUser);
+            accessCodeRequestRepository.save(request);
+        }
+
+        notificationService.notifyAccessCodeRequest(event.getOrganizer(), currentUser, event);
+    }
+
+    public List<AccessCodeRequestResponseDTO> getAccessCodeRequests(User organizer, UUID eventId) {
+        getOwnedEvent(organizer, eventId);
+        return accessCodeRequestRepository.findByEventIdAndStatus(eventId, AccessRequestStatus.PENDING)
+                .stream().map(this::toAccessRequestDTO).toList();
+    }
+
+    @Transactional
+    public void approveAccessCodeRequest(User organizer, UUID eventId, UUID requestId) {
+        Event event = getOwnedEvent(organizer, eventId);
+        AccessCodeRequest request = accessCodeRequestRepository.findById(requestId)
+                .orElseThrow(() -> new NotFoundException("Richiesta non trovata"));
+
+        if (!request.getEvent().getId().equals(eventId)) {
+            throw new NotFoundException("Richiesta non trovata per questo evento");
+        }
+        if (request.getStatus() != AccessRequestStatus.PENDING) {
+            throw new BadRequestException("Questa richiesta è già stata gestita");
+        }
+
+        request.setStatus(AccessRequestStatus.APPROVED);
+        accessCodeRequestRepository.save(request);
+        notificationService.notifyAccessCodeGranted(request.getRequester(), event);
+    }
+
+    @Transactional
+    public void rejectAccessCodeRequest(User organizer, UUID eventId, UUID requestId) {
+        getOwnedEvent(organizer, eventId);
+        AccessCodeRequest request = accessCodeRequestRepository.findById(requestId)
+                .orElseThrow(() -> new NotFoundException("Richiesta non trovata"));
+
+        if (!request.getEvent().getId().equals(eventId)) {
+            throw new NotFoundException("Richiesta non trovata per questo evento");
+        }
+        if (request.getStatus() != AccessRequestStatus.PENDING) {
+            throw new BadRequestException("Questa richiesta è già stata gestita");
+        }
+
+        request.setStatus(AccessRequestStatus.REJECTED);
+        accessCodeRequestRepository.save(request);
+    }
+
+    private AccessCodeRequestResponseDTO toAccessRequestDTO(AccessCodeRequest request) {
+        return new AccessCodeRequestResponseDTO(
+                request.getId(), request.getRequester().getUsername(),
+                request.getRequester().getProfilePicture(), request.getStatus(), request.getCreatedAt()
+        );
+    }
+
     private EventSummaryDTO toSummaryDTO(User currentUser, Event event) {
         boolean isOrganizer = event.getOrganizer().getId().equals(currentUser.getId());
         boolean locked = event.getVisibility() != EventVisibility.PUBLIC
@@ -329,6 +412,11 @@ public class EventService {
                 null, event.getRoute().getCreatedAt(), false
         ) : null;
 
+        AccessRequestStatus myRequestStatus = accessCodeRequestRepository
+                .findByEventIdAndRequesterId(event.getId(), currentUser.getId())
+                .map(AccessCodeRequest::getStatus)
+                .orElse(null);
+
         return new EventDetailDTO(
                 event.getId(), event.getTitle(), event.getDescription(),
                 event.getOrganizer().getUsername(), event.getStartDateTime(), event.getEndDateTime(),
@@ -336,7 +424,8 @@ public class EventService {
                 event.getMaxParticipants(), countAccepted(event.getId()),
                 event.getVisibility(), event.isAutoApprove(), event.getStatus(), event.getCreatedAt(),
                 routeSummary, myStatus(currentUser, event.getId()), false, true,
-                event.getType(), null, null, null, null
+                event.getType(), null, null, null, null,
+                myRequestStatus
         );
     }
 
@@ -365,7 +454,7 @@ public class EventService {
                 event.getType(),
                 event.getParentEvent() != null ? event.getParentEvent().getId() : null,
                 event.getParentEvent() != null ? event.getParentEvent().getTitle() : null,
-                children, totalDistanceMeters
+                children, totalDistanceMeters, null
         );
     }
 
