@@ -37,6 +37,14 @@ public class UserProfile {
     @Setter
     private LocalDate birthDate;
 
+    @Column
+    @Setter
+    private Double locationLat;
+
+    @Column
+    @Setter
+    private Double locationLng;
+
     @OneToMany(
             mappedBy = "profile",
             cascade = CascadeType.ALL,
