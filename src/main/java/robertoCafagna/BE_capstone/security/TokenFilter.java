@@ -11,10 +11,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
-import robertoCafagna.BE_capstone.DTO.ErrorDTO;
+import robertoCafagna.BE_capstone.DTO.ERROR.ErrorDTO;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.exceptions.UnauthorizedException;
-import robertoCafagna.BE_capstone.repositories.UserRepository;
+import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -43,6 +43,7 @@ public class TokenFilter extends OncePerRequestFilter {
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 throw new UnauthorizedException("Per favore inserisci il token nell'header di autorizzazione.");
             }
+
             String accessToken = authHeader.substring(7);
 
             jwtTools.verifyToken(accessToken);
@@ -50,6 +51,12 @@ public class TokenFilter extends OncePerRequestFilter {
             String id = jwtTools.extractIdFromToken(accessToken);
             User currentUtente = userRepository.findById(UUID.fromString(id))
                     .orElseThrow(() -> new UnauthorizedException("Utente associato al token non trovato!"));
+
+            if (!currentUtente.isActive()) {
+                throw new UnauthorizedException(
+                        "Account disattivato"
+                );
+            }
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(currentUtente, null, currentUtente.getAuthorities());
@@ -69,6 +76,6 @@ public class TokenFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         return new AntPathMatcher()
-                .match("/api/auth/**", request.getServletPath());
+                .match("/auth/**", request.getServletPath());
     }
 }

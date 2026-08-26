@@ -27,6 +27,7 @@ public class Vehicle {
 
 
     @Column
+    @Setter
     private String nickname;
 
     @ManyToOne
@@ -34,15 +35,19 @@ public class Vehicle {
     private MotorcycleModel model;
 
     @Column
+    @Setter
     private int year;
 
     @Column(unique = true)
+    @Setter
     private String licensePlate;
 
     @Column
+    @Setter
     private String vin;
 
     @Column
+    @Setter
     private String color;
 
     @Column
@@ -53,10 +58,15 @@ public class Vehicle {
     private int currentMileage;
 
     @Column
+    @Setter
     private String photoUrl;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column
+    @Setter
+    private String photoPublicId;
 
     public Vehicle(User user, MotorcycleModel model, String nickname,
                    int year, String licensePlate, String vin, String color,

@@ -65,11 +65,13 @@ public class User implements UserDetails {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    @Setter
     private Role role;
 
     @OneToOne(mappedBy = "user",
             cascade = CascadeType.ALL)
     @JsonIgnore
+    @Setter
     private UserProfile profile;
 
     @JsonIgnore
@@ -99,8 +101,33 @@ public class User implements UserDetails {
 
     @OneToOne
     @JsonIgnore
+    @Setter
     @JoinColumn(name = "current_vehicle_id")
     private Vehicle currentVehicle;
+
+    @Column
+    @Setter
+    private String profilePicturePublicId;
+
+    @Column
+    @Setter
+    private String resetPasswordToken;
+
+    @Column
+    @Setter
+    private LocalDateTime resetPasswordTokenExpiry;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Setter
+    private boolean emailVerified;
+
+    @Column
+    @Setter
+    private String emailVerificationToken;
+
+    @Column
+    @Setter
+    private LocalDateTime emailVerificationTokenExpiry;
 
 
     public User(String username, String email,
@@ -117,7 +144,8 @@ public class User implements UserDetails {
     @PrePersist
     private void beforeInsert() {
         createdAt = LocalDateTime.now();
-        active = false;
+        active = true;
+        emailVerified = false;
     }
 
 

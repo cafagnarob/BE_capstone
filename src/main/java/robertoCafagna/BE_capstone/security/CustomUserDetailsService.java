@@ -5,7 +5,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import robertoCafagna.BE_capstone.repositories.UserRepository;
+import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 
 @Service
 @RequiredArgsConstructor

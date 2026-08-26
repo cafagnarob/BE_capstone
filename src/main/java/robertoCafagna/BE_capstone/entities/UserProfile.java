@@ -22,6 +22,7 @@ public class UserProfile {
     @OneToOne
     @MapsId
     @JoinColumn(name = "user_id")
+    @Setter
     private User user;
 
     @Column(length = 500)
@@ -35,6 +36,14 @@ public class UserProfile {
     @Column
     @Setter
     private LocalDate birthDate;
+
+    @Column
+    @Setter
+    private Double locationLat;
+
+    @Column
+    @Setter
+    private Double locationLng;
 
     @OneToMany(
             mappedBy = "profile",

@@ -36,7 +36,14 @@ public class Post {
     @ManyToOne
     @JoinColumn(name = "event_id")
     @ToString.Exclude
+    @Setter
     private Event event;
+
+    @ManyToOne
+    @JoinColumn(name = "ride_id")
+    @ToString.Exclude
+    @Setter
+    private Ride ride;
 
     @OneToMany(
             mappedBy = "post",
@@ -46,8 +53,14 @@ public class Post {
     @OrderBy("orderIndex ASC")
     @ToString.Exclude
     @JsonIgnore
+    @Setter
     private List<PostMedia> media = new ArrayList<>();
 
+
+    @ManyToOne
+    @JoinColumn(name = "vehicle_id")
+    @Setter
+    private Vehicle vehicle;
 
     @OneToMany(
             mappedBy = "post",
@@ -56,6 +69,7 @@ public class Post {
     )
     @ToString.Exclude
     @JsonIgnore
+    @Setter
     private List<PostComment> comments = new ArrayList<>();
 
 

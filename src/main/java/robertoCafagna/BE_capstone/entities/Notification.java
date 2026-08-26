@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import robertoCafagna.BE_capstone.enums.NotificationType;
+import robertoCafagna.BE_capstone.enums.ReferenceType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -24,6 +25,11 @@ public class Notification {
     @ToString.Exclude
     private User user;
 
+    @ManyToOne
+    @JoinColumn(name = "actor_id")
+    @ToString.Exclude
+    private User actor;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private NotificationType type;
@@ -38,16 +44,31 @@ public class Notification {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-//todo ---------------
-    // dovrei aggiungere il riferimento all'evento, post, foto, commento, ecc ecc
-    //@Column
-    //private UUID referenceId;
-//todo ---------------
+    @Column
+    private UUID referenceId;
 
-    public Notification(User user, NotificationType type, String message) {
+    @Column
+    @Enumerated(EnumType.STRING)
+    private ReferenceType referenceType;
+
+    public Notification(User user, User actor, NotificationType type, String message, UUID referenceId,
+            ReferenceType referenceType) {
         this.user = user;
+        this.actor = actor;
         this.type = type;
         this.message = message;
+        this.referenceId = referenceId;
+        this.referenceType = referenceType;
+    }
+
+    public Notification(User user, User actor, NotificationType type, String message, UUID referenceId,
+            ReferenceType referenceType) {
+        this.user = user;
+        this.actor = actor;
+        this.type = type;
+        this.message = message;
+        this.referenceId = referenceId;
+        this.referenceType = referenceType;
     }
 
     @PrePersist

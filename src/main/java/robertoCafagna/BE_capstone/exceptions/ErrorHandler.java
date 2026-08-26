@@ -1,12 +1,20 @@
 package robertoCafagna.BE_capstone.exceptions;
 
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import robertoCafagna.BE_capstone.DTO.ErrorDTO;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import robertoCafagna.BE_capstone.DTO.ERROR.ErrorDTO;
+import robertoCafagna.BE_capstone.DTO.ERROR.ErrorListDTO;
+
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @RestControllerAdvice
 public class ErrorHandler {
@@ -34,6 +42,45 @@ public class ErrorHandler {
     @ExceptionHandler(UnauthorizedException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorDTO handleUnauthorized(UnauthorizedException ex) {
+        return new ErrorDTO(ex.getMessage(), LocalDateTime.now());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorListDTO handleValidation(MethodArgumentNotValidException ex) {
+        List<String> errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .toList();
+        return new ErrorListDTO("Errori di validazione", LocalDateTime.now(), errors);
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorListDTO handleValidation(ValidationException ex) {
+        return new ErrorListDTO(ex.getMessage(), LocalDateTime.now(), ex.getErrorsList());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorDTO handleAccessDenied(AccessDeniedException ex) {
+        return new ErrorDTO("Non hai i permessi per accedere a questa risorsa", LocalDateTime.now());
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ErrorDTO handleAuthenticationException(AuthenticationException ex) {
+        return new ErrorDTO("Credenziali non valide", LocalDateTime.now());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    public ErrorDTO handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        return new ErrorDTO("Il file caricato supera la dimensione massima consentita", LocalDateTime.now());
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorDTO handleForbidden(ForbiddenException ex) {
         return new ErrorDTO(ex.getMessage(), LocalDateTime.now());
     }
 }

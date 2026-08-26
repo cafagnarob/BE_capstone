@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import robertoCafagna.BE_capstone.enums.EventStatus;
+import robertoCafagna.BE_capstone.enums.EventType;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 
 import java.time.LocalDateTime;
@@ -28,24 +29,31 @@ public class Event {
     private User organizer;
 
     @Column(nullable = false)
+    @Setter
     private String title;
 
     @Column(nullable = false)
+    @Setter
     private String description;
 
     @Column(nullable = false)
+    @Setter
     private LocalDateTime startDateTime;
 
     @Column(nullable = false)
+    @Setter
     private LocalDateTime endDateTime;
 
-    @Column(nullable = false)
+    @Column
+    @Setter
     private Double meetingPointLat;
 
-    @Column(nullable = false)
+    @Column
+    @Setter
     private Double meetingPointLng;
 
     @Column(nullable = false)
+    @Setter
     private int maxParticipants;
 
     @Column(nullable = false)
@@ -57,11 +65,20 @@ public class Event {
     @Enumerated(EnumType.STRING)
     private EventVisibility visibility;
 
-    @Column(length = 50)
+    @Column(length = 100)
+    @Setter
     private String accessCode;
+
+    @Column(nullable = false)
+    @Setter
+    private boolean autoApprove;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(length = 255)
+    @Setter
+    private String meetingPointAddress;
 
     @OneToMany(
             mappedBy = "event",
@@ -71,6 +88,24 @@ public class Event {
     @ToString.Exclude
     private List<Participation> participants = new ArrayList<>();
 
+    @ManyToOne
+    @JoinColumn(name = "route_id")
+    @Setter
+    private Route route;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Setter
+    private EventType type;
+
+    @ManyToOne
+    @JoinColumn(name = "parent_event_id")
+    @Setter
+    private Event parentEvent;
+
+    @OneToMany(mappedBy = "parentEvent")
+    @OrderBy("startDateTime ASC")
+    private List<Event> children = new ArrayList<>();
 
     public Event(
             User organizer,
@@ -78,23 +113,29 @@ public class Event {
             String description,
             LocalDateTime startDateTime,
             LocalDateTime endDateTime,
+            Route route,
             Double meetingPointLat,
             Double meetingPointLng,
             int maxParticipants,
             EventVisibility visibility,
-            String accessCode
+            String accessCode,
+            boolean autoApprove,
+            EventType type
     ) {
         this.organizer = organizer;
         this.title = title;
         this.description = description;
         this.startDateTime = startDateTime;
         this.endDateTime = endDateTime;
+        this.route = route;
         this.meetingPointLat = meetingPointLat;
         this.meetingPointLng = meetingPointLng;
         this.maxParticipants = maxParticipants;
         this.visibility = visibility;
         this.accessCode = accessCode;
+        this.autoApprove = autoApprove;
         this.status = EventStatus.ACTIVE;
+        this.type = type;
     }
 
     @PrePersist

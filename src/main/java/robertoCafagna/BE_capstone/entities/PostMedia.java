@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 import robertoCafagna.BE_capstone.enums.MediaType;
 
@@ -33,6 +34,10 @@ public class PostMedia {
 
     @Column
     private int orderIndex;
+
+    @Column
+    @Setter
+    private String mediaPublicId;
 
 
     public PostMedia(Post post, String mediaUrl, MediaType type, int orderIndex) {
