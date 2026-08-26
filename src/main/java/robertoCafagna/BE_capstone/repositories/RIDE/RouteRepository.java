@@ -19,4 +19,6 @@ public interface RouteRepository extends JpaRepository<Route, UUID> {
 
     @Query("SELECT r FROM Route r LEFT JOIN FETCH r.waypoints WHERE r.id = :id")
     Optional<Route> findByIdWithWaypoints(@Param("id") UUID id);
+
+    Page<Route> findByCreatorIdAndImportableTrueOrderByCreatedAtDesc(UUID creatorId, Pageable pageable);
 }
