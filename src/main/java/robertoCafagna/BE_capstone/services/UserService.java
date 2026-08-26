@@ -357,7 +357,7 @@ public class UserService {
                 profile != null ? profile.getBirthDate() : null,
                 user.getCreatedAt(), user.getLastLogin(), user.isActive(),
                 toVehicleSummary(user.getCurrentVehicle()),
-                toLinkDTOs(profile)
+                toLinkDTOs(profile), user.getRole()
         );
     }
 
