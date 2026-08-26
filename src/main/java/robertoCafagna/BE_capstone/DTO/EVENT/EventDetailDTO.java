@@ -32,6 +32,7 @@ public record EventDetailDTO(
         String parentEventTitle,
         List<EventSummaryDTO> children,
         Double totalDistanceMeters,
-        AccessRequestStatus myAccessRequestStatus
+        AccessRequestStatus myAccessRequestStatus,
+        UUID myInviteId
 ) {
 }
