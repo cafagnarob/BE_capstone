@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.RIDE.*;
@@ -18,6 +19,7 @@ import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
+import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,6 +36,7 @@ public class RouteService {
     private final MapboxDirectionsService mapboxDirectionsService;
     private final RouteMapper routeMapper;
     private final EventRepository eventRepository;
+    private final UserRepository userRepository;
 
 
     @Transactional
@@ -67,10 +70,14 @@ public class RouteService {
         return routeMapper.toDTO(route);
     }
 
-    public RouteResponseDTO getRouteById(UUID routeId) {
+    public RouteResponseDTO getRouteById(User currentUser, UUID routeId) {
         Route route = routeRepository.findById(routeId)
                 .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
-        return routeMapper.toDTO(route);
+
+        boolean isOwner = route.getCreator().getId().equals(currentUser.getId());
+        boolean unlocked = isOwner || route.isImportable();
+
+        return toDTO(route, unlocked);
     }
 
     public Page<RouteResponseDTO> getMyRoutes(User currentUser, int page, int size) {
@@ -151,6 +158,48 @@ public class RouteService {
                 directions.encodedPolyline(),
                 directions.distanceMeters(),
                 directions.durationSeconds()
+        );
+    }
+
+    public Page<RouteResponseDTO> getUserRoutes(User currentUser, String username, int page, int size) {
+        if (size <= 0 || size > 50) size = 20;
+        if (page < 0) page = 0;
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+        User target = userRepository.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+        boolean isSelf = target.getId().equals(currentUser.getId());
+
+        Page<Route> routes = isSelf
+                ? routeRepository.findByCreatorIdOrderByCreatedAtDesc(target.getId(), pageable)
+                : routeRepository.findByCreatorIdAndImportableTrueOrderByCreatedAtDesc(target.getId(), pageable);
+
+        return routes.map(r -> toDTO(r, true));
+    }
+
+    private RouteResponseDTO toDTO(Route route, boolean unlocked) {
+
+        RouteResponseDTO full = routeMapper.toDTO(route);
+
+        if (unlocked) {
+            return new RouteResponseDTO(
+                    full.id(), full.name(), full.waypoints(), full.encodedPolyline(),
+                    full.distanceMeters(), full.durationSeconds(),
+                    full.avoidHighways(), full.avoidTolls(), full.avoidFerries(),
+                    full.googleMapsUrl(), full.createdAt(), full.importable(), false
+            );
+        }
+
+        List<RouteWaypointResponseDTO> strippedWaypoints = full.waypoints().stream()
+                .map(wp -> new RouteWaypointResponseDTO(wp.latitude(), wp.longitude(), wp.sequence(), null))
+                .toList();
+
+        return new RouteResponseDTO(
+                full.id(), full.name(), strippedWaypoints, full.encodedPolyline(),
+                full.distanceMeters(), full.durationSeconds(),
+                full.avoidHighways(), full.avoidTolls(), full.avoidFerries(),
+                null, full.createdAt(), full.importable(), true
         );
     }
 
