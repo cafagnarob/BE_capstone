@@ -20,12 +20,14 @@ import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.EVENT.AccessCodeRequestRepository;
+import robertoCafagna.BE_capstone.repositories.EVENT.EventInviteRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
 import robertoCafagna.BE_capstone.services.SOCIAL.NotificationService;
 import robertoCafagna.BE_capstone.specifications.EventSpecifications;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -44,7 +46,7 @@ public class EventService {
     private final ReverseGeocodingService reverseGeocodingService;
     private final NotificationService notificationService;
     private final AccessCodeRequestRepository accessCodeRequestRepository;
-
+    private final EventInviteRepository eventInviteRepository;
 
     @Transactional
     public EventDetailDTO createEvent(User organizer, CreateEventRequestDTO body) {
@@ -150,12 +152,40 @@ public class EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Evento non trovato"));
 
+        boolean isOrganizer = event.getOrganizer().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+        boolean hasEnded = event.getEndDateTime().isBefore(LocalDateTime.now());
+
+        if (hasEnded && !isOrganizer && !isAdmin) {
+            UUID participationEventId = event.getParentEvent() != null
+                    ? event.getParentEvent().getId()
+                    : event.getId();
+
+            boolean participated = participationRepository
+                    .findByEventIdAndUserId(participationEventId, currentUser.getId())
+                    .map(p -> p.getStatus() == ParticipationStatus.ACCEPTED)
+                    .orElse(false);
+
+            if (!participated) {
+                throw new ForbiddenException("Questo evento si è già concluso e non sei tra i partecipanti");
+            }
+        }
+
         if (eventAccessChecker.canSeeDetail(currentUser, event)) {
             return toDetailDTO(currentUser, event, countAccepted(eventId), false);
         }
 
         if (event.getVisibility() == EventVisibility.PRIVATE_CODE) {
             return toLockedDetailDTO(currentUser, event);
+        }
+
+        if (event.getVisibility() == EventVisibility.INVITE_ONLY) {
+            boolean hasInvite = eventInviteRepository
+                    .findByEventIdAndInvitedUserId(eventId, currentUser.getId())
+                    .isPresent();
+            if (hasInvite) {
+                return toDetailDTO(currentUser, event, countAccepted(eventId), false);
+            }
         }
 
         throw new ForbiddenException("Non hai accesso ai dettagli di questo evento");
@@ -184,6 +214,11 @@ public class EventService {
                 List.of(EventVisibility.PUBLIC, EventVisibility.PRIVATE_CODE)));
         specs.add(EventSpecifications.hasNoParent());
         specs.add(EventSpecifications.hasStatus(EventStatus.ACTIVE));
+        specs.add(EventSpecifications.notEnded(LocalDateTime.now()));
+
+        if (currentUser.getRole() != Role.ADMIN) {
+            specs.add(EventSpecifications.notEnded(LocalDateTime.now()));
+        }
 
         if (filters.title() != null && !filters.title().isBlank()) {
             specs.add(EventSpecifications.titleContains(filters.title().trim()));
@@ -409,7 +444,7 @@ public class EventService {
                 event.getRoute().getId(), event.getRoute().getName(), List.of(), null,
                 event.getRoute().getDistanceMeters(), event.getRoute().getDurationSeconds(),
                 event.getRoute().isAvoidHighways(), event.getRoute().isAvoidTolls(), event.getRoute().isAvoidFerries(),
-                null, event.getRoute().getCreatedAt(), false
+                null, event.getRoute().getCreatedAt(), false, true
         ) : null;
 
         AccessRequestStatus myRequestStatus = accessCodeRequestRepository
@@ -425,12 +460,21 @@ public class EventService {
                 event.getVisibility(), event.isAutoApprove(), event.getStatus(), event.getCreatedAt(),
                 routeSummary, myStatus(currentUser, event.getId()), false, true,
                 event.getType(), null, null, null, null,
-                myRequestStatus
+                myRequestStatus, null
         );
     }
 
     private EventDetailDTO toDetailDTO(User currentUser, Event event, long currentParticipants, boolean locked) {
         boolean isOrganizer = event.getOrganizer().getId().equals(currentUser.getId());
+
+        UUID myInviteId = null;
+        if (event.getVisibility() == EventVisibility.INVITE_ONLY && !isOrganizer) {
+            myInviteId = eventInviteRepository.findByEventIdAndInvitedUserId(event.getId(), currentUser.getId())
+                    .filter(inv -> inv.getStatus() == InviteStatus.PENDING)
+                    .map(EventInvite::getId)
+                    .orElse(null);
+        }
+
 
         List<EventSummaryDTO> children = event.getType() == EventType.MULTI_DAY_TRIP
                 ? event.getChildren().stream().map(c -> toSummaryDTO(currentUser, c)).toList()
@@ -454,7 +498,7 @@ public class EventService {
                 event.getType(),
                 event.getParentEvent() != null ? event.getParentEvent().getId() : null,
                 event.getParentEvent() != null ? event.getParentEvent().getTitle() : null,
-                children, totalDistanceMeters, null
+                children, totalDistanceMeters, null, myInviteId
         );
     }
 
