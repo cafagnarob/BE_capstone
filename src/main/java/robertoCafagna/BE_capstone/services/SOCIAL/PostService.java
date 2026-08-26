@@ -209,13 +209,18 @@ public class PostService {
         long commentCount = postCommentRepository.countByPostId(post.getId());
         boolean liked = likeRepository.existsByUserIdAndPostId(currentUser.getId(), post.getId());
 
+        Route eventRoute = post.getEvent() != null ? post.getEvent().getRoute() : null;
+
         return new PostResponseDTO(
                 post.getId(), post.getUser().getUsername(), post.getUser().getProfilePicture(),
                 post.getText(), post.getCreatedAt(),
                 post.getEvent() != null ? toEventSummary(currentUser, post.getEvent()) : null,
                 post.getRide() != null ? toRideSummary(post.getRide()) : null,
                 post.getVehicle() != null ? toVehicleSummary(post.getVehicle()) : null,
-                mediaDTOs, likeCount, commentCount, liked
+                mediaDTOs, likeCount, commentCount, liked,
+                eventRoute != null ? eventRoute.getId() : null,
+                eventRoute != null ? eventRoute.getName() : null,
+                eventRoute != null ? eventRoute.getDistanceMeters() : null
         );
     }
 
