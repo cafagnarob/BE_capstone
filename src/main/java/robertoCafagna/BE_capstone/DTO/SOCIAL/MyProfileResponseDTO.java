@@ -1,7 +1,8 @@
 package robertoCafagna.BE_capstone.DTO.SOCIAL;
 
-import robertoCafagna.BE_capstone.DTO.USER.ProfileLinkResponseDTO;
 import robertoCafagna.BE_capstone.DTO.GARAGE.VehicleSummaryDTO;
+import robertoCafagna.BE_capstone.DTO.USER.ProfileLinkResponseDTO;
+import robertoCafagna.BE_capstone.enums.Role;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,6 +23,7 @@ public record MyProfileResponseDTO(
         LocalDateTime lastLogin,
         boolean active,
         VehicleSummaryDTO currentVehicle,
-        List<ProfileLinkResponseDTO> links
+        List<ProfileLinkResponseDTO> links,
+        Role role
 ) {
 }

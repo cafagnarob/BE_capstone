@@ -34,9 +34,13 @@ public class RouteController {
     }
 
     @GetMapping("/{routeId}")
-    public ResponseEntity<RouteResponseDTO> getRouteById(@PathVariable UUID routeId) {
-        return ResponseEntity.ok(routeService.getRouteById(routeId));
+    public ResponseEntity<RouteResponseDTO> getRouteById(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID routeId
+    ) {
+        return ResponseEntity.ok(routeService.getRouteById(currentUser, routeId));
     }
+
 
     @GetMapping("/my")
     public ResponseEntity<Page<RouteResponseDTO>> getMyRoutes(
@@ -78,5 +82,15 @@ public class RouteController {
     @PostMapping("/preview")
     public ResponseEntity<RoutePreviewDTO> preview(@RequestBody @Valid PreviewRouteRequestDTO body) {
         return ResponseEntity.ok(routeService.previewRoute(body));
+    }
+
+    @GetMapping("/user/{username}")
+    public ResponseEntity<Page<RouteResponseDTO>> getUserRoutes(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable String username,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(routeService.getUserRoutes(currentUser, username, page, size));
     }
 }

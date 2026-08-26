@@ -30,8 +30,10 @@ public class NotificationService {
     // --- lettura ---
 
     public Page<NotificationResponseDTO> getMyNotifications(User currentUser, int page, int size) {
-        if (size <= 0 || size > 50) size = 20;
-        if (page < 0) page = 0;
+        if (size <= 0 || size > 50)
+            size = 20;
+        if (page < 0)
+            page = 0;
         Pageable pageable = PageRequest.of(page, size);
 
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(currentUser.getId(), pageable)
@@ -68,7 +70,8 @@ public class NotificationService {
 
     @Transactional
     public void notifyNewLike(User postOwner, User liker, Post post) {
-        if (postOwner.getId().equals(liker.getId())) return; // non ti notifichi da solo
+        if (postOwner.getId().equals(liker.getId()))
+            return; // non ti notifichi da solo
         create(postOwner, liker, NotificationType.LIKE,
                 liker.getUsername() + " ha messo like al tuo post",
                 post.getId(), ReferenceType.POST);
@@ -76,7 +79,8 @@ public class NotificationService {
 
     @Transactional
     public void notifyNewComment(User postOwner, User commenter, Post post) {
-        if (postOwner.getId().equals(commenter.getId())) return;
+        if (postOwner.getId().equals(commenter.getId()))
+            return;
         create(postOwner, commenter, NotificationType.COMMENT,
                 commenter.getUsername() + " ha commentato il tuo post",
                 post.getId(), ReferenceType.POST);
@@ -110,18 +114,31 @@ public class NotificationService {
                 event.getId(), ReferenceType.EVENT);
     }
 
-    private void create(User recipient, User actor, NotificationType type, String message, UUID referenceId, ReferenceType referenceType) {
+    private void create(User recipient, User actor, NotificationType type, String message, UUID referenceId,
+            ReferenceType referenceType) {
         Notification notification = new Notification(recipient, actor, type, message, referenceId, referenceType);
         notificationRepository.save(notification);
     }
 
+    @Transactional
+    public void notifyAccessCodeRequest(User organizer, User requester, Event event) {
+        create(organizer, requester, NotificationType.ACCESS_CODE_REQUEST,
+                requester.getUsername() + " ha richiesto il codice di accesso per \"" + event.getTitle() + "\"",
+                event.getId(), ReferenceType.EVENT);
+    }
+
+    @Transactional
+    public void notifyAccessCodeGranted(User requester, Event event) {
+        create(requester, event.getOrganizer(), NotificationType.ACCESS_CODE_GRANTED,
+                "Il codice per \"" + event.getTitle() + "\" è " + event.getAccessCode(),
+                event.getId(), ReferenceType.EVENT);
+    }
 
     private NotificationResponseDTO toDTO(Notification n) {
         return new NotificationResponseDTO(
                 n.getId(), n.getType(), n.getMessage(), n.isRead(),
                 n.getReferenceId(), n.getReferenceType(), n.getCreatedAt(),
                 n.getActor() != null ? n.getActor().getUsername() : null,
-                n.getActor() != null ? n.getActor().getProfilePicture() : null
-        );
+                n.getActor() != null ? n.getActor().getProfilePicture() : null);
     }
 }

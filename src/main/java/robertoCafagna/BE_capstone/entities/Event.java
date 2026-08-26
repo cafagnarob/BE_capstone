@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import robertoCafagna.BE_capstone.enums.EventStatus;
+import robertoCafagna.BE_capstone.enums.EventType;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 
 import java.time.LocalDateTime;
@@ -43,11 +44,11 @@ public class Event {
     @Setter
     private LocalDateTime endDateTime;
 
-    @Column(nullable = false)
+    @Column
     @Setter
     private Double meetingPointLat;
 
-    @Column(nullable = false)
+    @Column
     @Setter
     private Double meetingPointLng;
 
@@ -88,9 +89,23 @@ public class Event {
     private List<Participation> participants = new ArrayList<>();
 
     @ManyToOne
-    @JoinColumn(name = "route_id", nullable = false)
+    @JoinColumn(name = "route_id")
+    @Setter
     private Route route;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Setter
+    private EventType type;
+
+    @ManyToOne
+    @JoinColumn(name = "parent_event_id")
+    @Setter
+    private Event parentEvent;
+
+    @OneToMany(mappedBy = "parentEvent")
+    @OrderBy("startDateTime ASC")
+    private List<Event> children = new ArrayList<>();
 
     public Event(
             User organizer,
@@ -104,7 +119,8 @@ public class Event {
             int maxParticipants,
             EventVisibility visibility,
             String accessCode,
-            boolean autoApprove
+            boolean autoApprove,
+            EventType type
     ) {
         this.organizer = organizer;
         this.title = title;
@@ -119,6 +135,7 @@ public class Event {
         this.accessCode = accessCode;
         this.autoApprove = autoApprove;
         this.status = EventStatus.ACTIVE;
+        this.type = type;
     }
 
     @PrePersist

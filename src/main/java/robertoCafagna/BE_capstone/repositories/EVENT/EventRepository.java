@@ -28,12 +28,13 @@ public interface EventRepository extends JpaRepository<Event, UUID>, JpaSpecific
 
     List<Event> findByStatusAndEndDateTimeBefore(EventStatus status, LocalDateTime dateTime);
 
-    Page<Event> findByOrganizerIdOrderByStartDateTimeDesc(UUID organizerId, Pageable pageable);
+    Page<Event> findByOrganizerIdAndParentEventIsNullOrderByStartDateTimeDesc(UUID organizerId, Pageable pageable);
 
     @Query("""
                 SELECT p.event FROM Participation p
                 WHERE p.user.id = :userId
                   AND p.status IN :statuses
+                  AND p.event.parentEvent IS NULL
                 ORDER BY p.event.startDateTime DESC
             """)
     Page<Event> findParticipatingEvents(

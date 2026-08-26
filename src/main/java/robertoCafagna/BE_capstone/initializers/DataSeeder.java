@@ -78,7 +78,7 @@ public class DataSeeder implements CommandLineRunner {
         List<Event> events = seedEvents(users, routes);
         seedParticipationsAndInvites(users, events);
         List<Ride> rides = seedRides(users, vehicles);
-        List<Post> posts = seedPosts(users, events, rides);
+        List<Post> posts = seedPosts(users, events, rides, vehicles);
         seedCommentsAndLikes(users, posts);
         seedFollows(users);
         seedProfilesAndLinks(users);
@@ -158,6 +158,13 @@ public class DataSeeder implements CommandLineRunner {
         routes.add(buildFakeRoute(users.get(2), "Giro del mese scorso",
                 new double[]{45.4642, 9.1900}, new double[]{45.5100, 9.2500}));
 
+        // percorsi usati come "giorni" del viaggio multigiorno (indici 5 e 6)
+        routes.add(buildFakeRoute(users.get(1), "Viaggio giorno 1 - Roma verso Firenze",
+                new double[]{41.9028, 12.4964}, new double[]{43.7696, 11.2558}));
+
+        routes.add(buildFakeRoute(users.get(1), "Viaggio giorno 3 - Firenze verso Bologna",
+                new double[]{43.7696, 11.2558}, new double[]{44.4949, 11.3426}));
+
         return routeRepository.saveAll(routes);
     }
 
@@ -184,41 +191,91 @@ public class DataSeeder implements CommandLineRunner {
         List<Event> events = new ArrayList<>();
 
         RouteWaypoint stelvioStart = routes.get(0).getWaypoints().get(0);
-        events.add(new Event(users.get(1), "Giro Passo dello Stelvio", faker.lorem().paragraph(2),
+        Event stelvio = new Event(users.get(1), "Giro Passo dello Stelvio", faker.lorem().paragraph(2),
                 LocalDateTime.now().plusDays(10), LocalDateTime.now().plusDays(10).plusHours(6),
                 routes.get(0), stelvioStart.getLatitude(), stelvioStart.getLongitude(), 20,
-                EventVisibility.PUBLIC, null, true));
-
+                EventVisibility.PUBLIC, null, true, EventType.STANDARD);
+        stelvio.setMeetingPointAddress("Passo dello Stelvio, Bormio (SO)");
+        events.add(stelvio);
 
         RouteWaypoint costieraStart = routes.get(1).getWaypoints().get(0);
-        events.add(new Event(users.get(2), "Tour Costiera Amalfitana", faker.lorem().paragraph(2),
+        Event costiera = new Event(users.get(2), "Tour Costiera Amalfitana", faker.lorem().paragraph(2),
                 LocalDateTime.now().plusDays(15), LocalDateTime.now().plusDays(15).plusHours(8),
                 routes.get(1), costieraStart.getLatitude(), costieraStart.getLongitude(),
-                15, EventVisibility.PUBLIC, null, false));
-
+                15, EventVisibility.PUBLIC, null, false, EventType.STANDARD);
+        costiera.setMeetingPointAddress("Piazza Duomo, Amalfi (SA)");
+        events.add(costiera);
 
         RouteWaypoint toscanaStart = routes.get(2).getWaypoints().get(0);
-        events.add(new Event(users.get(1), "Giro Appennino Toscano", faker.lorem().paragraph(2),
+        Event toscana = new Event(users.get(1), "Giro Appennino Toscano", faker.lorem().paragraph(2),
                 LocalDateTime.now().plusDays(20), LocalDateTime.now().plusDays(20).plusHours(5),
                 routes.get(2), toscanaStart.getLatitude(), toscanaStart.getLongitude(),
-                12, EventVisibility.PRIVATE_CODE, passwordEncoder.encode("TOSCANA25"), false));
-
+                12, EventVisibility.PRIVATE_CODE, "TOSCANA25", false, EventType.STANDARD);
+        toscana.setMeetingPointAddress("Piazzale Michelangelo, Firenze");
+        events.add(toscana);
 
         RouteWaypoint dolomitiStart = routes.get(3).getWaypoints().get(0);
-        events.add(new Event(users.get(3), "Weekend Dolomiti - Gruppo ristretto", faker.lorem().paragraph(2),
+        Event dolomiti = new Event(users.get(3), "Weekend Dolomiti - Gruppo ristretto", faker.lorem().paragraph(2),
                 LocalDateTime.now().plusDays(25), LocalDateTime.now().plusDays(26),
                 routes.get(3), dolomitiStart.getLatitude(), dolomitiStart.getLongitude(),
-                8, EventVisibility.INVITE_ONLY, null, false));
-
+                8, EventVisibility.INVITE_ONLY, null, false, EventType.STANDARD);
+        dolomiti.setMeetingPointAddress("Passo Sella, Canazei (TN)");
+        events.add(dolomiti);
 
         RouteWaypoint pastStart = routes.get(4).getWaypoints().get(0);
-        events.add(new Event(users.get(2), "Giro concluso del mese scorso", faker.lorem().paragraph(2),
+        Event past = new Event(users.get(2), "Giro concluso del mese scorso", faker.lorem().paragraph(2),
                 LocalDateTime.now().minusDays(20), LocalDateTime.now().minusDays(20).plusHours(4),
                 routes.get(4), pastStart.getLatitude(), pastStart.getLongitude(),
-                10, EventVisibility.PUBLIC, null, true));
-        events.get(4).setStatus(EventStatus.FINISHED);
+                10, EventVisibility.PUBLIC, null, true, EventType.STANDARD);
+        past.setMeetingPointAddress("Piazza del Duomo, Milano");
+        past.setStatus(EventStatus.FINISHED);
+        events.add(past);
 
-        return eventRepository.saveAll(events);
+        // --- RADUNO: nessun percorso, solo punto di ritrovo ---
+        Event raduno = new Event(users.get(3), "Raduno Moto d'Epoca - Piazza Grande", faker.lorem().paragraph(2),
+                LocalDateTime.now().plusDays(30), LocalDateTime.now().plusDays(30).plusHours(10),
+                null, 44.8015, 10.3279, 100,
+                EventVisibility.PUBLIC, null, true, EventType.RADUNO);
+        raduno.setMeetingPointAddress("Piazza Grande, Modena");
+        events.add(raduno);
+
+        // --- MULTI_DAY_TRIP: evento padre, salvato prima dei suoi giorni ---
+        Event trip = new Event(users.get(1), "In moto verso Sud - 3 giorni", faker.lorem().paragraph(3),
+                LocalDateTime.now().plusDays(40), LocalDateTime.now().plusDays(43),
+                null, null, null, 6,
+                EventVisibility.PUBLIC, null, false, EventType.MULTI_DAY_TRIP);
+        events.add(trip);
+
+        eventRepository.saveAll(events);
+
+        // i giorni hanno bisogno dell'id del padre già persistito, quindi li salvo in un secondo momento
+        RouteWaypoint day1Start = routes.get(5).getWaypoints().get(0);
+        Event day1 = new Event(users.get(1), "Giorno 1 - Roma-Firenze", faker.lorem().paragraph(1),
+                trip.getStartDateTime(), trip.getStartDateTime().plusHours(5),
+                routes.get(5), day1Start.getLatitude(), day1Start.getLongitude(), 0,
+                trip.getVisibility(), null, false, EventType.STANDARD);
+        day1.setMeetingPointAddress("Piazza del Popolo, Roma");
+        day1.setParentEvent(trip);
+
+        // giorno di riposo: nessun percorso, solo ritrovo — dimostra che un giorno può essere un RADUNO
+        Event day2 = new Event(users.get(1), "Giorno 2 - Giornata di riposo a Firenze", faker.lorem().paragraph(1),
+                trip.getStartDateTime().plusDays(1), trip.getStartDateTime().plusDays(1).plusHours(8),
+                null, 43.7696, 11.2558, 0,
+                trip.getVisibility(), null, false, EventType.RADUNO);
+        day2.setMeetingPointAddress("Piazzale Michelangelo, Firenze");
+        day2.setParentEvent(trip);
+
+        RouteWaypoint day3Start = routes.get(6).getWaypoints().get(0);
+        Event day3 = new Event(users.get(1), "Giorno 3 - Firenze-Bologna", faker.lorem().paragraph(1),
+                trip.getStartDateTime().plusDays(2), trip.getStartDateTime().plusDays(2).plusHours(4),
+                routes.get(6), day3Start.getLatitude(), day3Start.getLongitude(), 0,
+                trip.getVisibility(), null, false, EventType.STANDARD);
+        day3.setMeetingPointAddress("Piazza Maggiore, Bologna");
+        day3.setParentEvent(trip);
+
+        eventRepository.saveAll(List.of(day1, day2, day3));
+
+        return events; // resta a 7 elementi: i giorni non compaiono qui, coerente col fatto che non sono "listabili"
     }
 
     private void seedParticipationsAndInvites(List<User> users, List<Event> events) {
@@ -228,12 +285,14 @@ public class DataSeeder implements CommandLineRunner {
             participations.add(new Participation(events.get(0), users.get(i), ParticipationStatus.ACCEPTED));
         }
 
-
         participations.add(new Participation(events.get(1), users.get(5), ParticipationStatus.PENDING));
         participations.add(new Participation(events.get(1), users.get(6), ParticipationStatus.ACCEPTED));
 
-
         participations.add(new Participation(events.get(2), users.get(4), ParticipationStatus.ACCEPTED));
+
+        // partecipazioni ai nuovi tipi (indici 5 = raduno, 6 = viaggio multigiorno)
+        participations.add(new Participation(events.get(5), users.get(4), ParticipationStatus.ACCEPTED));
+        participations.add(new Participation(events.get(6), users.get(5), ParticipationStatus.ACCEPTED));
 
         participationRepository.saveAll(participations);
 
@@ -282,16 +341,24 @@ public class DataSeeder implements CommandLineRunner {
 
     // --- POST ---
 
-    private List<Post> seedPosts(List<User> users, List<Event> events, List<Ride> rides) {
+    private List<Post> seedPosts(List<User> users, List<Event> events, List<Ride> rides, List<Vehicle> vehicles) {
         List<Post> posts = new ArrayList<>();
 
         for (int i = 1; i < users.size(); i++) {
-            Post post = new Post(users.get(i), null, faker.lorem().paragraph(1));
+            User author = users.get(i);
+            Post post = new Post(author, null, faker.lorem().paragraph(1));
 
             if (!rides.isEmpty() && random.nextBoolean()) {
                 post.setRide(rides.get(random.nextInt(rides.size())));
             } else if (random.nextBoolean()) {
                 post.setEvent(events.get(random.nextInt(events.size())));
+            }
+
+            Vehicle authorVehicle = vehicles.stream()
+                    .filter(v -> v.getUser().getId().equals(author.getId()))
+                    .findFirst().orElse(null);
+            if (authorVehicle != null && random.nextBoolean()) {
+                post.setVehicle(authorVehicle);
             }
 
             List<PostMedia> media = new ArrayList<>();
@@ -367,11 +434,10 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedNotifications(List<User> users, List<Event> events) {
         List<Notification> notifications = new ArrayList<>();
-        notifications.add(new Notification(users.get(1), NotificationType.FOLLOW,
+        notifications.add(new Notification(users.get(1), users.get(2), NotificationType.FOLLOW,
                 users.get(2).getUsername() + " ha iniziato a seguirti", users.get(2).getId(), ReferenceType.USER));
-        notifications.add(new Notification(users.get(1), NotificationType.EVENT_INVITE,
+        notifications.add(new Notification(users.get(1), events.get(3).getOrganizer(), NotificationType.EVENT_INVITE,
                 "Sei stato invitato all'evento \"" + events.get(3).getTitle() + "\"", events.get(3).getId(), ReferenceType.EVENT));
         notificationRepository.saveAll(notifications);
     }
 }
-

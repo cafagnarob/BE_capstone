@@ -17,6 +17,9 @@ public record UpdateProfileRequestDTO(
         @Size(max = 100, message = "La location non può superare i 100 caratteri")
         String location,
 
+        Double locationLat,
+        Double locationLng,
+
         LocalDate birthDate
 ) {
 }

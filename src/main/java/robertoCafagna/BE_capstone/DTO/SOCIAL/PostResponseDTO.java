@@ -20,6 +20,9 @@ public record PostResponseDTO(
         List<PostMediaResponseDTO> media,
         long likeCount,
         long commentCount,
-        boolean likedByCurrentUser
+        boolean likedByCurrentUser,
+        UUID routeId,
+        String routeName,
+        Double routeDistanceMeters
 ) {
 }

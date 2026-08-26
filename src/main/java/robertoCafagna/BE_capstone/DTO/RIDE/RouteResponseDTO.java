@@ -16,6 +16,7 @@ public record RouteResponseDTO(
         boolean avoidFerries,
         String googleMapsUrl,
         LocalDateTime createdAt,
-        boolean importable
+        boolean importable,
+        boolean locked
 ) {
 }

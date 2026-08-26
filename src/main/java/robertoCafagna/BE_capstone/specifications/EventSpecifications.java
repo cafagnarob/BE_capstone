@@ -36,4 +36,12 @@ public class EventSpecifications {
                 cb.between(root.get("meetingPointLng"), minLng, maxLng)
         );
     }
+
+    public static Specification<Event> hasNoParent() {
+        return (root, query, cb) -> cb.isNull(root.get("parentEvent"));
+    }
+
+    public static Specification<Event> notEnded(LocalDateTime now) {
+        return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("endDateTime"), now);
+    }
 }

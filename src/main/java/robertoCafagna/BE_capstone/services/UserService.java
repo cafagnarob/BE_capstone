@@ -1,8 +1,10 @@
 package robertoCafagna.BE_capstone.services;
 
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,6 +27,7 @@ import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
 import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -70,11 +73,17 @@ public class UserService {
         UserProfile profile = user.getProfile();
         if (profile == null) {
             profile = new UserProfile(body.description(), body.location(), body.birthDate());
+            profile.setLocationLat(body.locationLat());
+            profile.setLocationLng(body.locationLng());
             profile.setUser(user);
             user.setProfile(profile);
         } else {
             if (body.description() != null) profile.setDescription(body.description());
-            if (body.location() != null) profile.setLocation(body.location());
+            if (body.location() != null) {
+                profile.setLocation(body.location());
+                profile.setLocationLat(body.locationLat());
+                profile.setLocationLng(body.locationLng());
+            }
             if (body.birthDate() != null) profile.setBirthDate(body.birthDate());
         }
 
@@ -268,17 +277,65 @@ public class UserService {
         return toMyProfileDTO(user);
     }
 
-    public Page<UserSearchResultDTO> searchUsers(String query, int page, int size) {
+    @Transactional(readOnly = true)
+    public Page<UserSearchResultDTO> searchUsers(User currentUser, String query, int page, int size) {
         if (size <= 0 || size > 50) size = 20;
         if (page < 0) page = 0;
-        Pageable pageable = PageRequest.of(page, size);
 
         if (query == null || query.isBlank()) {
-            return Page.empty(pageable);
+            return Page.empty(PageRequest.of(page, size));
         }
 
-        return userRepository.searchActive(query.trim(), pageable)
-                .map(u -> new UserSearchResultDTO(u.getId(), u.getUsername(), u.getName(), u.getSurname(), u.getProfilePicture()));
+        User me = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+        UserProfile myProfile = me.getProfile();
+
+        if (myProfile == null || myProfile.getLocationLat() == null || myProfile.getLocationLng() == null) {
+            // nessuna posizione nota: comportamento invariato, ordinamento e paginazione a database
+            Pageable pageable = PageRequest.of(page, size);
+            return userRepository.searchActive(query.trim(), pageable).map(this::toSearchResultDTO);
+        }
+
+        double myLat = myProfile.getLocationLat();
+        double myLng = myProfile.getLocationLng();
+
+        // limite di sicurezza: raccolgo un insieme ampio ma non illimitato di corrispondenze testuali,
+        // poi ordino per vicinanza in memoria e pagino a mano — corretto a questa scala, non pensato per milioni di utenti
+        List<User> matches = userRepository.searchActive(query.trim(), PageRequest.of(0, 500)).getContent();
+
+        List<User> sorted = matches.stream()
+                .sorted(Comparator.comparingDouble(u -> distanceOrMax(u, myLat, myLng)))
+                .toList();
+
+        int from = Math.min(page * size, sorted.size());
+        int to = Math.min(from + size, sorted.size());
+        List<UserSearchResultDTO> content = sorted.subList(from, to).stream()
+                .map(this::toSearchResultDTO)
+                .toList();
+
+        return new PageImpl<>(content, PageRequest.of(page, size), sorted.size());
+    }
+
+    private double distanceOrMax(User u, double lat, double lng) {
+        UserProfile p = u.getProfile();
+        if (p == null || p.getLocationLat() == null || p.getLocationLng() == null) {
+            return Double.MAX_VALUE; // chi non ha una posizione va in fondo alla lista, non sparisce
+        }
+        return haversineKm(lat, lng, p.getLocationLat(), p.getLocationLng());
+    }
+
+    private double haversineKm(double lat1, double lng1, double lat2, double lng2) {
+        final double R = 6371;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    private UserSearchResultDTO toSearchResultDTO(User u) {
+        return new UserSearchResultDTO(u.getId(), u.getUsername(), u.getName(), u.getSurname(), u.getProfilePicture());
     }
 
 
@@ -300,7 +357,7 @@ public class UserService {
                 profile != null ? profile.getBirthDate() : null,
                 user.getCreatedAt(), user.getLastLogin(), user.isActive(),
                 toVehicleSummary(user.getCurrentVehicle()),
-                toLinkDTOs(profile)
+                toLinkDTOs(profile), user.getRole()
         );
     }
 

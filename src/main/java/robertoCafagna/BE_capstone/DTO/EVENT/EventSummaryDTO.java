@@ -1,6 +1,7 @@
 package robertoCafagna.BE_capstone.DTO.EVENT;
 
 import robertoCafagna.BE_capstone.enums.EventStatus;
+import robertoCafagna.BE_capstone.enums.EventType;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 
@@ -20,6 +21,7 @@ public record EventSummaryDTO(
         ParticipationStatus myParticipationStatus,
         boolean organizer,
         Double meetingPointLat,
-        Double meetingPointLng
+        Double meetingPointLng,
+        EventType type
 ) {
 }
