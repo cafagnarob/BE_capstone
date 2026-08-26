@@ -24,7 +24,7 @@ public class RouteMapper {
                 route.getId(), route.getName(), waypointDTOs,
                 route.getEncodedPolyline(), route.getDistanceMeters(), route.getDurationSeconds(),
                 route.isAvoidHighways(), route.isAvoidTolls(), route.isAvoidFerries(),
-                googleMapsUrl, route.getCreatedAt(), route.isImportable()
+                googleMapsUrl, route.getCreatedAt(), route.isImportable(), false
         );
     }
 }
