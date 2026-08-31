@@ -52,7 +52,7 @@ public class Notification {
     private ReferenceType referenceType;
 
     public Notification(User user, User actor, NotificationType type, String message, UUID referenceId,
-            ReferenceType referenceType) {
+                        ReferenceType referenceType) {
         this.user = user;
         this.actor = actor;
         this.type = type;
@@ -61,15 +61,6 @@ public class Notification {
         this.referenceType = referenceType;
     }
 
-    public Notification(User user, User actor, NotificationType type, String message, UUID referenceId,
-            ReferenceType referenceType) {
-        this.user = user;
-        this.actor = actor;
-        this.type = type;
-        this.message = message;
-        this.referenceId = referenceId;
-        this.referenceType = referenceType;
-    }
 
     @PrePersist
     private void beforeInsert() {

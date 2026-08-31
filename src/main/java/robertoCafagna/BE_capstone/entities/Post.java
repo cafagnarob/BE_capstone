@@ -72,6 +72,11 @@ public class Post {
     @Setter
     private List<PostComment> comments = new ArrayList<>();
 
+    @ManyToOne
+    @JoinColumn(name = "route_id")
+    @Setter
+    private Route route;
+
 
     public Post(User user, Event event, String text) {
         this.user = user;
