@@ -54,6 +54,30 @@ public class DataSeeder implements CommandLineRunner {
     private final Faker faker = new Faker();
     private final Random random = new Random();
 
+    private static String encodePolyline(List<double[]> points) {
+        StringBuilder result = new StringBuilder();
+        long prevLat = 0, prevLng = 0;
+        for (double[] point : points) {
+            long lat = Math.round(point[0] * 1e5);
+            long lng = Math.round(point[1] * 1e5);
+            encodeValue(lat - prevLat, result);
+            encodeValue(lng - prevLng, result);
+            prevLat = lat;
+            prevLng = lng;
+        }
+        return result.toString();
+    }
+
+    // --- USER ---
+
+    private static void encodeValue(long value, StringBuilder result) {
+        long v = value < 0 ? ~(value << 1) : (value << 1);
+        while (v >= 0x20) {
+            result.append((char) ((0x20 | (v & 0x1f)) + 63));
+            v >>= 5;
+        }
+        result.append((char) (v + 63));
+    }
 
     @Override
     public void run(String... args) throws Exception {
@@ -88,7 +112,7 @@ public class DataSeeder implements CommandLineRunner {
                 users.size(), events.size(), rides.size(), posts.size());
     }
 
-    // --- USER ---
+    // --- ROUTE ---
 
     private List<User> seedUsers() {
         List<User> users = new ArrayList<>();
@@ -110,7 +134,6 @@ public class DataSeeder implements CommandLineRunner {
 
         return userRepository.saveAll(users);
     }
-
 
     private List<Vehicle> seedVehicles(List<User> users, List<MotorcycleModel> models) {
         List<Vehicle> vehicles = new ArrayList<>();
@@ -137,8 +160,6 @@ public class DataSeeder implements CommandLineRunner {
         }
         return vehicles;
     }
-
-    // --- ROUTE ---
 
     private List<Route> seedRoutes(List<User> users) {
         List<Route> routes = new ArrayList<>();
@@ -170,11 +191,11 @@ public class DataSeeder implements CommandLineRunner {
 
     private Route buildFakeRoute(User creator, String name, double[] start, double[] end) {
 
-        String fakePolyline = "fake_polyline_" + faker.internet().uuid();
+        String polyline = encodePolyline(List.of(start, end));
         double distanceMeters = 15000 + random.nextInt(60000);
         double durationSeconds = distanceMeters / 15.0;
 
-        Route route = new Route(creator, name, fakePolyline, distanceMeters, durationSeconds,
+        Route route = new Route(creator, name, polyline, distanceMeters, durationSeconds,
                 random.nextBoolean(), random.nextBoolean(), random.nextBoolean());
         route.setImportable(random.nextBoolean());
 
