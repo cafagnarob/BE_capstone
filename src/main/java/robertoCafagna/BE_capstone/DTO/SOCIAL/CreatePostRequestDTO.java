@@ -7,6 +7,7 @@ public record CreatePostRequestDTO(
         UUID eventId,
         UUID rideId,
         UUID vehicleId,
-        Boolean includeRoutePhoto
+        Boolean includeRoutePhoto,
+        UUID routeId
 ) {
 }
