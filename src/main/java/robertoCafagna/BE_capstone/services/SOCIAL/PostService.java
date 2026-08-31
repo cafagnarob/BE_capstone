@@ -24,6 +24,7 @@ import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RideRepository;
+import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.LikeRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.PostCommentRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.PostRepository;
@@ -49,15 +50,19 @@ public class PostService {
     private final CloudinaryService cloudinaryService;
     private final EventAccessChecker eventAccessChecker;
     private final VehicleRepository vehicleRepository;
+    private final RouteRepository routeRepository;
 
 
     @Transactional
     public PostResponseDTO createPost(User currentUser, CreatePostRequestDTO body, List<MultipartFile> files) {
         Event event = resolveEvent(currentUser, body.eventId());
         Ride ride = resolveRide(currentUser, body.rideId());
+        Route route = resolveRoute(currentUser, body.routeId());
+
 
         Post post = new Post(currentUser, event, body.text());
         post.setRide(ride);
+        post.setRoute(route);
 
         Vehicle vehicle = resolveVehicle(currentUser, body.vehicleId());
 
@@ -198,6 +203,16 @@ public class PostService {
                 .orElseThrow(() -> new NotFoundException("Veicolo non trovato nel tuo garage"));
     }
 
+    private Route resolveRoute(User currentUser, UUID routeId) {
+        if (routeId == null) return null;
+        Route route = routeRepository.findById(routeId)
+                .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
+        if (!route.getCreator().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Non puoi condividere un percorso che non è tuo");
+        }
+        return route;
+    }
+
     // --- mapping ---
 
     private PostResponseDTO toDTO(User currentUser, Post post) {
@@ -209,7 +224,8 @@ public class PostService {
         long commentCount = postCommentRepository.countByPostId(post.getId());
         boolean liked = likeRepository.existsByUserIdAndPostId(currentUser.getId(), post.getId());
 
-        Route eventRoute = post.getEvent() != null ? post.getEvent().getRoute() : null;
+        Route eventRoute = post.getRoute() != null ? post.getRoute()
+                : (post.getEvent() != null ? post.getEvent().getRoute() : null);
 
         return new PostResponseDTO(
                 post.getId(), post.getUser().getUsername(), post.getUser().getProfilePicture(),
@@ -223,6 +239,7 @@ public class PostService {
                 eventRoute != null ? eventRoute.getDistanceMeters() : null
         );
     }
+
 
     private EventSummaryDTO toEventSummary(User currentUser, Event event) {
         boolean locked = !eventAccessChecker.canSeeDetail(currentUser, event);
