@@ -10,6 +10,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import robertoCafagna.BE_capstone.DTO.GARAGE.BrandResponseDTO;
 import robertoCafagna.BE_capstone.DTO.GARAGE.MotorcycleModelResponseDTO;
+import robertoCafagna.BE_capstone.config.CategoryPlaceholders;
 import robertoCafagna.BE_capstone.entities.Brand;
 import robertoCafagna.BE_capstone.entities.MotorcycleModel;
 import robertoCafagna.BE_capstone.enums.MotorcycleCategory;
@@ -92,7 +93,7 @@ public class MotorcycleModelService {
                 model.getYearEnd(),
                 model.getHorsePower(),
                 model.getWeightKg(),
-                model.getImageUrl()
+                CategoryPlaceholders.resolve(model.getImageUrl(), model.getCategory())
         );
     }
 
