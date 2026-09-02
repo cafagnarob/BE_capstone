@@ -15,4 +15,5 @@ public interface PostCommentRepository extends JpaRepository<PostComment, UUID> 
 
     long countByPostId(UUID postId);
 
+    void deleteByPostId(UUID postId);
 }

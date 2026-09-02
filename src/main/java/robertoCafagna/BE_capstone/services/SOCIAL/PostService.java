@@ -115,6 +115,13 @@ public class PostService {
                 .toList();
 
 
+        // 1. Elimino i like
+        likeRepository.deleteByPostId(postId);
+
+        // 2. Elimino i commenti
+        postCommentRepository.deleteByPostId(postId);
+
+        // 3. Elimino il post
         postRepository.delete(post);
 
         for (String publicId : publicIds) {
