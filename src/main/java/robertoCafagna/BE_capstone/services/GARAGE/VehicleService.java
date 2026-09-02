@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import robertoCafagna.BE_capstone.DTO.GARAGE.*;
+import robertoCafagna.BE_capstone.config.CategoryPlaceholders;
 import robertoCafagna.BE_capstone.entities.MotorcycleModel;
 import robertoCafagna.BE_capstone.entities.Ride;
 import robertoCafagna.BE_capstone.entities.User;
@@ -207,7 +208,7 @@ public class VehicleService {
                 new BrandResponseDTO(model.getBrand().getId(), model.getBrand().getName(), model.getBrand().getLogoUrl()),
                 model.getName(), model.getEngineCc(), model.getCategory(),
                 model.getYearStart(), model.getYearEnd(), model.getHorsePower(), model.getWeightKg(),
-                model.getImageUrl()
+                CategoryPlaceholders.resolve(model.getImageUrl(), model.getCategory())
         );
     }
 }
