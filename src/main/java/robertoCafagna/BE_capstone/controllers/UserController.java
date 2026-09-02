@@ -13,10 +13,7 @@ import robertoCafagna.BE_capstone.DTO.ADMIN.ChangePasswordRequestDTO;
 import robertoCafagna.BE_capstone.DTO.AUTH.UpdateUsernameRequestDTO;
 import robertoCafagna.BE_capstone.DTO.ERROR.UpdateEmailRequestDTO;
 import robertoCafagna.BE_capstone.DTO.SOCIAL.MyProfileResponseDTO;
-import robertoCafagna.BE_capstone.DTO.USER.ProfileLinkRequestDTO;
-import robertoCafagna.BE_capstone.DTO.USER.PublicProfileResponseDTO;
-import robertoCafagna.BE_capstone.DTO.USER.UpdateProfileRequestDTO;
-import robertoCafagna.BE_capstone.DTO.USER.UserSearchResultDTO;
+import robertoCafagna.BE_capstone.DTO.USER.*;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.services.UserService;
 
@@ -77,6 +74,15 @@ public class UserController {
             @RequestParam("file") MultipartFile file
     ) {
         return ResponseEntity.ok(userService.updateProfilePicture(currentUser, file));
+    }
+
+    @PatchMapping("/me/avatar")
+    public ResponseEntity<Void> selectPresetAvatar(
+            @AuthenticationPrincipal User currentUser,
+            @RequestBody @Valid SelectAvatarRequestDTO body
+    ) {
+        userService.selectPresetAvatar(currentUser, body.avatarUrl());
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/me/deactivate")
