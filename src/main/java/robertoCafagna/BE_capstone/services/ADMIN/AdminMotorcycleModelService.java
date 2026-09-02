@@ -5,9 +5,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import robertoCafagna.BE_capstone.DTO.GARAGE.CreateMotorcycleModelRequestDTO;
 import robertoCafagna.BE_capstone.DTO.GARAGE.BrandResponseDTO;
+import robertoCafagna.BE_capstone.DTO.GARAGE.CreateMotorcycleModelRequestDTO;
 import robertoCafagna.BE_capstone.DTO.GARAGE.MotorcycleModelResponseDTO;
+import robertoCafagna.BE_capstone.config.CategoryPlaceholders;
 import robertoCafagna.BE_capstone.entities.Brand;
 import robertoCafagna.BE_capstone.entities.MotorcycleModel;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
@@ -67,7 +68,7 @@ public class AdminMotorcycleModelService {
                 ),
                 model.getName(), model.getEngineCc(), model.getCategory(),
                 model.getYearStart(), model.getYearEnd(), model.getHorsePower(), model.getWeightKg(),
-                model.getImageUrl()
+                CategoryPlaceholders.resolve(model.getImageUrl(), model.getCategory())
         );
     }
 }
