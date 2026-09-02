@@ -29,6 +29,7 @@ import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -36,11 +37,32 @@ import java.util.UUID;
 @Slf4j
 public class UserService {
     private static final int MAX_LINKS_PER_PROFILE = 5;
+    private static final Set<String> PRESET_AVATAR_URLS = Set.of(
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340483/PT-2_0000_Livello-16_njxa3x.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340482/PT-2_0004_Livello-10_ekpuxf.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340482/PT-2_0005_Livello-13_n60ryb.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340481/PT-2_0010_Livello-9_ctkvgy.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340480/PT-2_0009_Livello-14-copia-2_kxx5yz.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340479/PT-2_0007_Livello-14-copia-4_kmu7dt.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340479/PT-2_0006_Livello-12_jjc6xf.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340479/PT-2_0001_Livello-17_shk8vt.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340476/PT-2_0008_Livello-14-copia-3_xfbnbv.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340476/PT-2_0002_Livello-15_gl3axl.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340476/PT-2_0003_Livello-14_r8kssy.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788340476/PT-2_0011_Livello-11_bdqfuc.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788299783/riders-app/users/profile/ufbq4qig0ojhyfzkyymi.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788299175/Senza-titolo-1_0001_Livello-7_d72slm.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788299169/Senza-titolo-1_0007_Livello-2_m027er.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788299168/Senza-titolo-1_0004_Livello-5_avhx39.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788299168/Senza-titolo-1_0002_Livello-6_bvr2ia.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788299168/Senza-titolo-1_0003_Livello-8_xmtyzc.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788299168/Senza-titolo-1_0005_Livello-4_w2qjf4.png",
+            "https://res.cloudinary.com/ehgscudu/image/upload/v1788299167/Senza-titolo-1_0006_Livello-3_ilyoal.png"
+    );
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
     private final VehicleRepository vehicleRepository;
     private final PasswordEncoder passwordEncoder;
-
 
     // --- lettura ---
     @Transactional(readOnly = true)
@@ -89,6 +111,31 @@ public class UserService {
 
         userRepository.save(user);
         return toMyProfileDTO(user);
+    }
+
+    @Transactional
+    public void selectPresetAvatar(User currentUser, String avatarUrl) {
+        if (!PRESET_AVATAR_URLS.contains(avatarUrl)) {
+            throw new BadRequestException("Avatar non valido");
+        }
+
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+        String oldPublicId = user.getProfilePicturePublicId();
+
+        user.setProfilePicture(avatarUrl);
+        user.setProfilePicturePublicId(null);
+        userRepository.save(user);
+
+        if (oldPublicId != null) {
+            try {
+                cloudinaryService.deleteImage(oldPublicId);
+            } catch (IOException e) {
+                log.warn("Impossibile cancellare la vecchia immagine profilo {} per l'utente {}",
+                        oldPublicId, currentUser.getId(), e);
+            }
+        }
     }
 
     // --- credenziali: ognuna con la propria conferma password ---
