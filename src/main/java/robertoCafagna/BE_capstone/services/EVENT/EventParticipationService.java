@@ -12,6 +12,7 @@ import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.entities.Event;
 import robertoCafagna.BE_capstone.entities.Participation;
 import robertoCafagna.BE_capstone.entities.User;
+import robertoCafagna.BE_capstone.enums.EventType;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
@@ -21,6 +22,7 @@ import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 import robertoCafagna.BE_capstone.services.SOCIAL.NotificationService;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -64,6 +66,10 @@ public class EventParticipationService {
                 eventId, ParticipationStatus.ACCEPTED);
         if (accepted >= event.getMaxParticipants()) {
             throw new BadRequestException("Numero massimo di partecipanti raggiunto");
+        }
+
+        if (event.getType() == EventType.STANDARD && event.getEndDateTime().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Questo evento è già concluso, non è più possibile richiedere di partecipare");
         }
 
         ParticipationStatus initialStatus;

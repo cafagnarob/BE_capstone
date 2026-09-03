@@ -9,6 +9,7 @@ public record UpdateEventRequestDTO(
         LocalDateTime endDateTime,
         Double meetingPointLat,
         Double meetingPointLng,
+        Integer bufferMinutes,
         Integer maxParticipants
 ) {
 }

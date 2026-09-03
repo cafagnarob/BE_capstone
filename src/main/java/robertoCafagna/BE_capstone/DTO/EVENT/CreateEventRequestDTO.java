@@ -23,8 +23,8 @@ public record CreateEventRequestDTO(
         @NotNull(message = "Specificare data/ora di inizio")
         @Future(message = "La data di inizio deve essere futura")
         LocalDateTime startDateTime,
-        @NotNull(message = "Specificare data/ora di fine")
         LocalDateTime endDateTime,
+        Integer bufferMinutes,
         @Min(value = 1, message = "Il numero massimo di partecipanti deve essere almeno 1")
         int maxParticipants,
         @NotNull(message = "Specificare la visibilità")

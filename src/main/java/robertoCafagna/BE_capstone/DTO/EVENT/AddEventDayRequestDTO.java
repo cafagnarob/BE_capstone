@@ -19,7 +19,7 @@ public record AddEventDayRequestDTO(
         Double meetingPointLng,
         @NotNull(message = "Specificare data/ora di inizio")
         LocalDateTime startDateTime,
-        @NotNull(message = "Specificare data/ora di fine")
-        LocalDateTime endDateTime
+        LocalDateTime endDateTime,
+        Integer bufferMinutes
 ) {
 }

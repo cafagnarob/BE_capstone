@@ -50,9 +50,6 @@ public class EventService {
 
     @Transactional
     public EventDetailDTO createEvent(User organizer, CreateEventRequestDTO body) {
-        if (body.endDateTime().isBefore(body.startDateTime())) {
-            throw new BadRequestException("La data di fine non può precedere quella di inizio");
-        }
         if (body.visibility() == EventVisibility.PRIVATE_CODE
                 && (body.accessCode() == null || body.accessCode().isBlank())) {
             throw new BadRequestException("Specificare un codice di accesso per un evento con visibilità PRIVATE_CODE");
@@ -61,12 +58,13 @@ public class EventService {
         validateEventTypeConstraints(body.type(), body.routeId(), body.meetingPointLat(), body.meetingPointLng());
         MeetingPoint mp = resolveMeetingPoint(organizer, body.routeId(), body.type(), body.meetingPointLat(), body.meetingPointLng());
 
+        LocalDateTime endDateTime = resolveEndDateTime(body.type(), body.startDateTime(), body.endDateTime(), body.bufferMinutes(), mp.route());
 
         boolean autoApprove = body.visibility() == EventVisibility.PUBLIC && body.autoApprove();
 
         Event event = new Event(
                 organizer, body.title(), body.description(),
-                body.startDateTime(), body.endDateTime(),
+                body.startDateTime(), endDateTime,
                 mp.route(), mp.lat(), mp.lng(),
                 body.maxParticipants(), body.visibility(),
                 body.visibility() == EventVisibility.PRIVATE_CODE ? body.accessCode() : null,
@@ -80,6 +78,26 @@ public class EventService {
         return toDetailDTO(organizer, event, 0, false);
     }
 
+    private LocalDateTime resolveEndDateTime(EventType type, LocalDateTime startDateTime, LocalDateTime providedEndDateTime,
+                                             Integer bufferMinutes, Route route) {
+        return switch (type) {
+            case STANDARD -> {
+                long bufferSeconds = bufferMinutes != null ? bufferMinutes * 60L : 0;
+                yield startDateTime.plusSeconds((long) route.getDurationSeconds() + bufferSeconds);
+            }
+            case RADUNO -> {
+                if (providedEndDateTime == null) {
+                    throw new BadRequestException("Un raduno richiede una data di fine");
+                }
+                if (providedEndDateTime.isBefore(startDateTime)) {
+                    throw new BadRequestException("La data di fine non può precedere quella di inizio");
+                }
+                yield providedEndDateTime;
+            }
+            case MULTI_DAY_TRIP -> startDateTime; // ricalcolata quando si aggiungono i giorni
+        };
+    }
+
     @Transactional
     public EventDetailDTO addDay(User organizer, UUID tripId, AddEventDayRequestDTO body) {
         Event trip = eventRepository.findById(tripId)
@@ -91,9 +109,6 @@ public class EventService {
         if (trip.getType() != EventType.MULTI_DAY_TRIP) {
             throw new BadRequestException("Questo evento non è un viaggio multigiorno");
         }
-        if (body.endDateTime().isBefore(body.startDateTime())) {
-            throw new BadRequestException("La data di fine non può precedere quella di inizio");
-        }
         if (body.type() == EventType.MULTI_DAY_TRIP) {
             throw new BadRequestException("Un giorno non può essere a sua volta un viaggio multigiorno");
         }
@@ -101,9 +116,11 @@ public class EventService {
         validateEventTypeConstraints(body.type(), body.routeId(), body.meetingPointLat(), body.meetingPointLng());
         MeetingPoint mp = resolveMeetingPoint(organizer, body.routeId(), body.type(), body.meetingPointLat(), body.meetingPointLng());
 
+        LocalDateTime dayEndDateTime = resolveEndDateTime(body.type(), body.startDateTime(), body.endDateTime(), body.bufferMinutes(), mp.route());
+
         Event day = new Event(
                 organizer, body.title(), body.description(),
-                body.startDateTime(), body.endDateTime(),
+                body.startDateTime(), dayEndDateTime,
                 mp.route(), mp.lat(), mp.lng(),
                 0, trip.getVisibility(), null, false, body.type()
         );
@@ -111,6 +128,15 @@ public class EventService {
         day.setParentEvent(trip);
 
         eventRepository.save(day);
+
+        LocalDateTime maxExisting = trip.getChildren().stream()
+                .map(Event::getEndDateTime)
+                .max(LocalDateTime::compareTo)
+                .orElse(trip.getStartDateTime());
+        LocalDateTime newTripEnd = maxExisting.isAfter(dayEndDateTime) ? maxExisting : dayEndDateTime;
+        trip.setEndDateTime(newTripEnd);
+        eventRepository.save(trip);
+
         log.info("Aggiunto giorno {} al viaggio {}", day.getId(), tripId);
         return toDetailDTO(organizer, day, 0, false);
     }
@@ -121,11 +147,24 @@ public class EventService {
 
         if (body.title() != null) event.setTitle(body.title());
         if (body.description() != null) event.setDescription(body.description());
-        if (body.startDateTime() != null) event.setStartDateTime(body.startDateTime());
-        if (body.endDateTime() != null) event.setEndDateTime(body.endDateTime());
         if (body.meetingPointLat() != null) event.setMeetingPointLat(body.meetingPointLat());
         if (body.meetingPointLng() != null) event.setMeetingPointLng(body.meetingPointLng());
         if (body.maxParticipants() != null) event.setMaxParticipants(body.maxParticipants());
+
+        boolean startChanged = body.startDateTime() != null && !body.startDateTime().equals(event.getStartDateTime());
+        if (startChanged) {
+            event.setStartDateTime(body.startDateTime());
+        }
+
+        if (event.getType() == EventType.STANDARD && (startChanged || body.bufferMinutes() != null)) {
+            long bufferSeconds = body.bufferMinutes() != null ? body.bufferMinutes() * 60L : 0;
+            event.setEndDateTime(event.getStartDateTime().plusSeconds((long) event.getRoute().getDurationSeconds() + bufferSeconds));
+        } else if (event.getType() == EventType.RADUNO && body.endDateTime() != null) {
+            if (body.endDateTime().isBefore(event.getStartDateTime())) {
+                throw new BadRequestException("La data di fine non può precedere quella di inizio");
+            }
+            event.setEndDateTime(body.endDateTime());
+        }
 
         eventRepository.save(event);
         return toDetailDTO(currentUser, event, countAccepted(eventId), false);
@@ -214,7 +253,6 @@ public class EventService {
                 List.of(EventVisibility.PUBLIC, EventVisibility.PRIVATE_CODE)));
         specs.add(EventSpecifications.hasNoParent());
         specs.add(EventSpecifications.hasStatus(EventStatus.ACTIVE));
-        specs.add(EventSpecifications.notEnded(LocalDateTime.now()));
 
         if (currentUser.getRole() != Role.ADMIN) {
             specs.add(EventSpecifications.notEnded(LocalDateTime.now()));
