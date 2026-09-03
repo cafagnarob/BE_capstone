@@ -20,5 +20,7 @@ public interface VehicleRepository
 
     boolean existsByLicensePlate(String licensePlate);
 
+    boolean existsByUserIdAndModelId(UUID userId, UUID modelId);
+
 
 }

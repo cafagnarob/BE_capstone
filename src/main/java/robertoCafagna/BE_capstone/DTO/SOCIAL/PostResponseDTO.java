@@ -23,6 +23,7 @@ public record PostResponseDTO(
         boolean likedByCurrentUser,
         UUID routeId,
         String routeName,
-        Double routeDistanceMeters
+        Double routeDistanceMeters,
+        List<PostWidgetResponseDTO> widgets
 ) {
 }

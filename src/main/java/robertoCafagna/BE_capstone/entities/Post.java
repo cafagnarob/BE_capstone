@@ -77,6 +77,11 @@ public class Post {
     @Setter
     private Route route;
 
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    @ToString.Exclude
+    private List<PostWidget> widgets = new ArrayList<>();
+
 
     public Post(User user, Event event, String text) {
         this.user = user;

@@ -20,4 +20,6 @@ public interface RideRepository
     Page<Ride> findByUserIdAndVehicleIdOrderByCreatedAtDesc(UUID userId, UUID vehicleId, Pageable pageable);
 
     Optional<Ride> findByUserIdAndEndedAtIsNull(UUID userId);
+
+    boolean existsByIdAndUserId(UUID id, UUID userId);
 }

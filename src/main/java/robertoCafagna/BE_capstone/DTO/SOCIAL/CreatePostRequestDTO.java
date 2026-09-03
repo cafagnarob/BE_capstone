@@ -1,5 +1,6 @@
 package robertoCafagna.BE_capstone.DTO.SOCIAL;
 
+import java.util.List;
 import java.util.UUID;
 
 public record CreatePostRequestDTO(
@@ -8,6 +9,7 @@ public record CreatePostRequestDTO(
         UUID rideId,
         UUID vehicleId,
         Boolean includeRoutePhoto,
-        UUID routeId
+        UUID routeId,
+        List<CreatePostWidgetRequestDTO> widgets
 ) {
 }

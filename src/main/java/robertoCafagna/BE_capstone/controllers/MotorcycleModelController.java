@@ -3,10 +3,7 @@ package robertoCafagna.BE_capstone.controllers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import robertoCafagna.BE_capstone.DTO.GARAGE.MotorcycleModelResponseDTO;
 import robertoCafagna.BE_capstone.enums.MotorcycleCategory;
 import robertoCafagna.BE_capstone.services.GARAGE.MotorcycleModelService;
@@ -34,5 +31,10 @@ public class MotorcycleModelController {
         return ResponseEntity.ok(
                 motorcycleModelService.findFiltered(brandId, name, category, minCc, maxCc, page, size, orderBy)
         );
+    }
+
+    @GetMapping("/{modelId}")
+    public ResponseEntity<MotorcycleModelResponseDTO> getById(@PathVariable UUID modelId) {
+        return ResponseEntity.ok(motorcycleModelService.getById(modelId));
     }
 }

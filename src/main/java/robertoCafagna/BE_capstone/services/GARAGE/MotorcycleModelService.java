@@ -15,6 +15,7 @@ import robertoCafagna.BE_capstone.entities.Brand;
 import robertoCafagna.BE_capstone.entities.MotorcycleModel;
 import robertoCafagna.BE_capstone.enums.MotorcycleCategory;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
+import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.GARAGE.MotorcycleModelRepository;
 
 import java.util.ArrayList;
@@ -80,6 +81,13 @@ public class MotorcycleModelService {
         return motorcycleModelRepository
                 .findAll(Specification.allOf(specs), pageable)
                 .map(this::toDTO);
+    }
+
+
+    public MotorcycleModelResponseDTO getById(UUID modelId) {
+        MotorcycleModel model = motorcycleModelRepository.findById(modelId)
+                .orElseThrow(() -> new NotFoundException("Modello non trovato"));
+        return toDTO(model);
     }
 
     private MotorcycleModelResponseDTO toDTO(MotorcycleModel model) {

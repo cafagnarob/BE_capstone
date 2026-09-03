@@ -21,4 +21,6 @@ public interface RouteRepository extends JpaRepository<Route, UUID> {
     Optional<Route> findByIdWithWaypoints(@Param("id") UUID id);
 
     Page<Route> findByCreatorIdAndImportableTrueOrderByCreatedAtDesc(UUID creatorId, Pageable pageable);
+
+    boolean existsByIdAndCreatorId(UUID id, UUID creatorId);
 }

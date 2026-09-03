@@ -11,13 +11,12 @@ import org.springframework.web.multipart.MultipartFile;
 import robertoCafagna.BE_capstone.DTO.EVENT.EventSummaryDTO;
 import robertoCafagna.BE_capstone.DTO.GARAGE.VehicleSummaryDTO;
 import robertoCafagna.BE_capstone.DTO.RIDE.RideSummaryDTO;
-import robertoCafagna.BE_capstone.DTO.SOCIAL.CreatePostRequestDTO;
-import robertoCafagna.BE_capstone.DTO.SOCIAL.PostMediaResponseDTO;
-import robertoCafagna.BE_capstone.DTO.SOCIAL.PostResponseDTO;
+import robertoCafagna.BE_capstone.DTO.SOCIAL.*;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.entities.*;
 import robertoCafagna.BE_capstone.enums.FeedType;
 import robertoCafagna.BE_capstone.enums.MediaType;
+import robertoCafagna.BE_capstone.enums.WidgetType;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
@@ -76,8 +75,51 @@ public class PostService {
         post.setVehicle(vehicle);
         post.setMedia(media);
         postRepository.save(post);
+        postRepository.flush();
+
+
+        if (body.widgets() != null) {
+            for (CreatePostWidgetRequestDTO w : body.widgets()) {
+                if (w.mediaIndex() < 0 || w.mediaIndex() >= media.size()) {
+                    throw new BadRequestException("Indice foto non valido per un widget");
+                }
+                validateWidgetReference(currentUser, w.type(), w.referenceId());
+                post.getWidgets().add(new PostWidget(
+                        post, media.get(w.mediaIndex()), w.type(), w.referenceId(), w.size(), w.xPercent(), w.yPercent()
+                ));
+            }
+            postRepository.save(post);
+        }
+
         log.info("Utente {} ha creato il post {}", currentUser.getId(), post.getId());
         return toDTO(currentUser, post);
+    }
+
+    private void validateWidgetReference(User currentUser, WidgetType type, UUID referenceId) {
+        switch (type) {
+            case RIDE -> {
+                if (!rideRepository.existsByIdAndUserId(referenceId, currentUser.getId())) {
+                    throw new ForbiddenException("Non puoi taggare un giro che non è tuo");
+                }
+            }
+            case ROUTE -> {
+                if (!routeRepository.existsByIdAndCreatorId(referenceId, currentUser.getId())) {
+                    throw new ForbiddenException("Non puoi taggare un percorso che non è tuo");
+                }
+            }
+            case EVENT -> {
+                Event ev = eventRepository.findById(referenceId)
+                        .orElseThrow(() -> new NotFoundException("Evento non trovato"));
+                if (!eventAccessChecker.canSeeDetail(currentUser, ev)) {
+                    throw new ForbiddenException("Non hai accesso a questo evento");
+                }
+            }
+            case VEHICLE -> {
+                if (!vehicleRepository.existsByUserIdAndModelId(currentUser.getId(), referenceId)) {
+                    throw new ForbiddenException("Non possiedi una moto di questo modello");
+                }
+            }
+        }
     }
 
     public Page<PostResponseDTO> getFeed(User currentUser, FeedType type, int page, int size) {
@@ -227,6 +269,13 @@ public class PostService {
                 .map(m -> new PostMediaResponseDTO(m.getId(), m.getMediaUrl(), m.getType(), m.getOrderIndex()))
                 .toList();
 
+        List<PostWidgetResponseDTO> widgetDTOs = post.getWidgets().stream()
+                .map(w -> new PostWidgetResponseDTO(
+                        w.getId(), w.getMedia().getId(), w.getType(), w.getReferenceId(),
+                        w.getSize(), w.getXPercent(), w.getYPercent()
+                ))
+                .toList();
+
         long likeCount = likeRepository.countByPostId(post.getId());
         long commentCount = postCommentRepository.countByPostId(post.getId());
         boolean liked = likeRepository.existsByUserIdAndPostId(currentUser.getId(), post.getId());
@@ -243,7 +292,8 @@ public class PostService {
                 mediaDTOs, likeCount, commentCount, liked,
                 eventRoute != null ? eventRoute.getId() : null,
                 eventRoute != null ? eventRoute.getName() : null,
-                eventRoute != null ? eventRoute.getDistanceMeters() : null
+                eventRoute != null ? eventRoute.getDistanceMeters() : null,
+                widgetDTOs
         );
     }
 
