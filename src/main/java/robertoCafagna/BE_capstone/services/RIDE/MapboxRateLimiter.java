@@ -14,16 +14,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class MapboxRateLimiter {
 
     private final AtomicInteger callsToday = new AtomicInteger(0);
-    private final AtomicInteger staticImageCallsToday = new AtomicInteger(0);
     @Value("${mapbox.directions.daily-limit:100}")
     private int dailyLimit;
-    @Value("${mapbox.static-images.daily-limit:100}")
-    private int staticImagesDailyLimit;
 
     public void checkAndIncrement() {
         int current = callsToday.incrementAndGet();
         if (current > dailyLimit) {
-            callsToday.decrementAndGet(); // non conto la chiamata rifiutata
+            callsToday.decrementAndGet();
             throw new BadRequestException(
                     "Limite giornaliero di calcoli percorso raggiunto. Riprova domani."
             );
@@ -33,17 +30,7 @@ public class MapboxRateLimiter {
 
     @Scheduled(cron = "0 0 0 * * *")
     public void resetCounter() {
-        int previousDirections = callsToday.getAndSet(0);
-        int previousStatic = staticImageCallsToday.getAndSet(0);
-        log.info("Reset contatori Mapbox — Directions: {}, Static Images: {}", previousDirections, previousStatic);
-    }
-
-    public void checkAndIncrementStaticImages() {
-        int current = staticImageCallsToday.incrementAndGet();
-        if (current > staticImagesDailyLimit) {
-            staticImageCallsToday.decrementAndGet();
-            throw new BadRequestException("Limite giornaliero di immagini percorso raggiunto. Riprova domani.");
-        }
-        log.info("Chiamata Mapbox Static Images {}/{} oggi", current, staticImagesDailyLimit);
+        int previous = callsToday.getAndSet(0);
+        log.info("Reset contatore Mapbox Directions — erano state fatte {} chiamate", previous);
     }
 }

@@ -45,17 +45,6 @@ public class CloudinaryService {
     }
 
 
-    public UploadResult uploadImage(byte[] bytes, String folder) throws IOException {
-        Map<?, ?> risultato = cloudinary
-                .uploader()
-                .upload(bytes, ObjectUtils.asMap("folder", folder));
-        return new UploadResult(
-                risultato.get("secure_url").toString(),
-                risultato.get("public_id").toString()
-        );
-    }
-
-
     public void deleteImage(String publicId)
             throws IOException {
         cloudinary.uploader()
