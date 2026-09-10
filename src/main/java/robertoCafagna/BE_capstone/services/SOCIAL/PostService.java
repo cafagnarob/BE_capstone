@@ -12,6 +12,8 @@ import robertoCafagna.BE_capstone.DTO.EVENT.EventSummaryDTO;
 import robertoCafagna.BE_capstone.DTO.GARAGE.VehicleSummaryDTO;
 import robertoCafagna.BE_capstone.DTO.RIDE.RideSummaryDTO;
 import robertoCafagna.BE_capstone.DTO.SOCIAL.*;
+import robertoCafagna.BE_capstone.Interface.PostCommentCount;
+import robertoCafagna.BE_capstone.Interface.PostLikeCount;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.entities.*;
 import robertoCafagna.BE_capstone.enums.FeedType;
@@ -30,10 +32,8 @@ import robertoCafagna.BE_capstone.repositories.SOCIAL.PostRepository;
 import robertoCafagna.BE_capstone.services.CloudinaryService;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -128,13 +128,13 @@ public class PostService {
             case FOLLOWING -> postRepository.findFollowingFeed(currentUser.getId(), pageable);
             case EXPLORE -> postRepository.findExploreFeed(currentUser.getId(), pageable);
         };
-        return posts.map(p -> toDTO(currentUser, p));
+        return toDTOPage(currentUser, posts);
     }
 
     public Page<PostResponseDTO> getUserPosts(User currentUser, UUID userId, int page, int size) {
         Pageable pageable = buildPageable(page, size);
-        return postRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
-                .map(p -> toDTO(currentUser, p));
+        Page<Post> posts = postRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+        return toDTOPage(currentUser, posts);
     }
 
     public PostResponseDTO getPostById(User currentUser, UUID postId) {
@@ -223,8 +223,8 @@ public class PostService {
 
     public Page<PostResponseDTO> getPostsByVehicle(User currentUser, UUID vehicleId, int page, int size) {
         Pageable pageable = buildPageable(page, size);
-        return postRepository.findByUserIdAndVehicleIdOrderByCreatedAtDesc(currentUser.getId(), vehicleId, pageable)
-                .map(p -> toDTO(currentUser, p));
+        Page<Post> posts = postRepository.findByUserIdAndVehicleIdOrderByCreatedAtDesc(currentUser.getId(), vehicleId, pageable);
+        return toDTOPage(currentUser, posts);
     }
 
     /**
@@ -265,6 +265,13 @@ public class PostService {
     // --- mapping ---
 
     private PostResponseDTO toDTO(User currentUser, Post post) {
+        long likeCount = likeRepository.countByPostId(post.getId());
+        long commentCount = postCommentRepository.countByPostId(post.getId());
+        boolean liked = likeRepository.existsByUserIdAndPostId(currentUser.getId(), post.getId());
+        return toDTO(currentUser, post, likeCount, commentCount, liked);
+    }
+
+    private PostResponseDTO toDTO(User currentUser, Post post, long likeCount, long commentCount, boolean liked) {
         List<PostMediaResponseDTO> mediaDTOs = post.getMedia().stream()
                 .map(m -> new PostMediaResponseDTO(m.getId(), m.getMediaUrl(), m.getType(), m.getOrderIndex()))
                 .toList();
@@ -275,10 +282,6 @@ public class PostService {
                         w.getSize(), w.getXPercent(), w.getYPercent()
                 ))
                 .toList();
-
-        long likeCount = likeRepository.countByPostId(post.getId());
-        long commentCount = postCommentRepository.countByPostId(post.getId());
-        boolean liked = likeRepository.existsByUserIdAndPostId(currentUser.getId(), post.getId());
 
         Route eventRoute = post.getRoute() != null ? post.getRoute()
                 : (post.getEvent() != null ? post.getEvent().getRoute() : null);
@@ -295,6 +298,28 @@ public class PostService {
                 eventRoute != null ? eventRoute.getDistanceMeters() : null,
                 widgetDTOs
         );
+    }
+
+
+    private Page<PostResponseDTO> toDTOPage(User currentUser, Page<Post> posts) {
+        List<UUID> postIds = posts.getContent().stream().map(Post::getId).toList();
+
+        if (postIds.isEmpty()) {
+            return posts.map(post -> toDTO(currentUser, post, 0L, 0L, false));
+        }
+
+        Map<UUID, Long> likeCounts = likeRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(PostLikeCount::getPostId, PostLikeCount::getCount));
+        Map<UUID, Long> commentCounts = postCommentRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(PostCommentCount::getPostId, PostCommentCount::getCount));
+        Set<UUID> likedPostIds = new HashSet<>(likeRepository.findLikedPostIds(currentUser.getId(), postIds));
+
+        return posts.map(post -> toDTO(
+                currentUser, post,
+                likeCounts.getOrDefault(post.getId(), 0L),
+                commentCounts.getOrDefault(post.getId(), 0L),
+                likedPostIds.contains(post.getId())
+        ));
     }
 
 
