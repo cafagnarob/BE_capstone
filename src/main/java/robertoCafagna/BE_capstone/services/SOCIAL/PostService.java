@@ -50,6 +50,7 @@ public class PostService {
     private final EventAccessChecker eventAccessChecker;
     private final VehicleRepository vehicleRepository;
     private final RouteRepository routeRepository;
+    private final RouteImageService routeImageService;
 
 
     @Transactional
@@ -66,7 +67,7 @@ public class PostService {
         Vehicle vehicle = resolveVehicle(currentUser, body.vehicleId());
 
         List<PostMedia> media = buildUploadedMedia(post, files);
-        media.addAll(buildRouteMedia(post, ride, body.includeRoutePhoto()));
+        media.addAll(buildRouteMedia(post, ride, body.includeRoutePhoto(), media.size()));
 
         if (media.isEmpty()) {
             throw new BadRequestException("Il post deve contenere almeno un'immagine");
@@ -235,9 +236,13 @@ public class PostService {
      */
 
 
-    private List<PostMedia> buildRouteMedia(Post post, Ride ride, Boolean includeRoutePhoto) {
+    private List<PostMedia> buildRouteMedia(Post post, Ride ride, Boolean includeRoutePhoto, int startIndex) {
         boolean wantsRoutePhoto = Boolean.TRUE.equals(includeRoutePhoto);
-        return List.of(); // no-op finché Mapbox non è implementato
+        if (!wantsRoutePhoto || ride == null) {
+            return List.of();
+        }
+        PostMedia media = routeImageService.generateRoutePhoto(post, ride, startIndex);
+        return media != null ? List.of(media) : List.of();
     }
 
     private Pageable buildPageable(int page, int size) {

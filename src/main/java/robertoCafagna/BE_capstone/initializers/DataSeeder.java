@@ -21,6 +21,7 @@ import robertoCafagna.BE_capstone.repositories.RIDE.RideRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.*;
 import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
+import robertoCafagna.BE_capstone.utils.PolylineEncoder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -101,30 +102,6 @@ public class DataSeeder implements CommandLineRunner {
     private final Faker faker = new Faker();
     private final Random random = new Random();
 
-    private static String encodePolyline(List<double[]> points) {
-        StringBuilder result = new StringBuilder();
-        long prevLat = 0, prevLng = 0;
-        for (double[] point : points) {
-            long lat = Math.round(point[0] * 1e5);
-            long lng = Math.round(point[1] * 1e5);
-            encodeValue(lat - prevLat, result);
-            encodeValue(lng - prevLng, result);
-            prevLat = lat;
-            prevLng = lng;
-        }
-        return result.toString();
-    }
-
-    // --- USER ---
-
-    private static void encodeValue(long value, StringBuilder result) {
-        long v = value < 0 ? ~(value << 1) : (value << 1);
-        while (v >= 0x20) {
-            result.append((char) ((0x20 | (v & 0x1f)) + 63));
-            v >>= 5;
-        }
-        result.append((char) (v + 63));
-    }
 
     @Override
     public void run(String... args) throws Exception {
@@ -270,7 +247,7 @@ public class DataSeeder implements CommandLineRunner {
 
     private Route buildRealisticRoute(User creator, String name, double[] start, double[] end) {
         List<double[]> path = generateWindingPath(start, end, 14);
-        String polyline = encodePolyline(path);
+        String polyline = PolylineEncoder.encode(path);
 
         double distanceMeters = 0;
         for (int i = 1; i < path.size(); i++) {
