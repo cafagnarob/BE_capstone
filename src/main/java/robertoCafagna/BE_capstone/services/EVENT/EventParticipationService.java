@@ -24,6 +24,7 @@ import robertoCafagna.BE_capstone.services.SOCIAL.NotificationService;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -51,11 +52,17 @@ public class EventParticipationService {
                     " non puoi partecipare al tuo stesso evento");
         }
 
-        participationRepository.findByEventIdAndUserId(eventId, currentUser.getId())
-                .ifPresent(p -> {
-                    throw new BadRequestException("Hai già una richiesta di partecipazione" +
-                            " per questo evento");
-                });
+        Optional<Participation> existing = participationRepository.findByEventIdAndUserId(eventId, currentUser.getId());
+        if (existing.isPresent()) {
+            Participation p = existing.get();
+            if (p.getStatus() == ParticipationStatus.CANCELLED) {
+                participationRepository.delete(p);
+            } else if (p.getStatus() == ParticipationStatus.REMOVED) {
+                throw new ForbiddenException("L'organizzatore ti ha rimosso da questo evento, non puoi richiedere di nuovo di partecipare");
+            } else {
+                throw new BadRequestException("Hai già una richiesta di partecipazione per questo evento");
+            }
+        }
 
         if (event.getVisibility() == EventVisibility.INVITE_ONLY) {
             throw new BadRequestException("Questo evento richiede un invito " +
@@ -86,11 +93,35 @@ public class EventParticipationService {
         participationRepository.save(participation);
         if (initialStatus == ParticipationStatus.PENDING) {
             notificationService.notifyParticipationRequest(event.getOrganizer(), currentUser, event);
+        } else {
+            notificationService.notifyEventJoined(event.getOrganizer(), currentUser, event);
         }
         log.info("Utente {} richiede partecipazione a evento {} (stato: {})",
                 currentUser.getId(), eventId, initialStatus);
         return toDTO(participation);
     }
+
+
+    @Transactional
+    public void removeParticipant(User organizer, UUID eventId, UUID participationId) {
+        Participation participation = participationRepository.findById(participationId)
+                .orElseThrow(() -> new NotFoundException("Partecipazione non trovata"));
+
+        if (!participation.getEvent().getId().equals(eventId)) {
+            throw new NotFoundException("Partecipazione non trovata per questo evento");
+        }
+        if (!participation.getEvent().getOrganizer().getId().equals(organizer.getId())) {
+            throw new ForbiddenException("Non sei l'organizzatore di questo evento");
+        }
+        if (participation.getStatus() != ParticipationStatus.ACCEPTED) {
+            throw new BadRequestException("Puoi rimuovere solo partecipanti già accettati");
+        }
+
+        participation.setStatus(ParticipationStatus.REMOVED);
+        participationRepository.save(participation);
+        notificationService.notifyParticipationRemoved(participation.getUser(), participation.getEvent());
+    }
+
 
     @Transactional
     public ParticipationResponseDTO approve(User organizer, UUID eventId, UUID participationId) {

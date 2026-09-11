@@ -22,12 +22,12 @@ public class FollowingRelationship {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "follower_id", nullable = false)
     @ToString.Exclude
     private User follower;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "followed_user_id", nullable = false)
     @ToString.Exclude
     private User followedUser;

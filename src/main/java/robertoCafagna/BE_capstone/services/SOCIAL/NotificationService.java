@@ -9,10 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import robertoCafagna.BE_capstone.DTO.SOCIAL.NotificationResponseDTO;
 import robertoCafagna.BE_capstone.DTO.SOCIAL.UnreadCountDTO;
-import robertoCafagna.BE_capstone.entities.Event;
-import robertoCafagna.BE_capstone.entities.Notification;
-import robertoCafagna.BE_capstone.entities.Post;
-import robertoCafagna.BE_capstone.entities.User;
+import robertoCafagna.BE_capstone.entities.*;
 import robertoCafagna.BE_capstone.enums.NotificationType;
 import robertoCafagna.BE_capstone.enums.ReferenceType;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
@@ -100,6 +97,38 @@ public class NotificationService {
                 event.getId(), ReferenceType.EVENT);
     }
 
+
+    @Transactional
+    public void notifyEventJoined(User organizer, User joiner, Event event) {
+        create(organizer, joiner, NotificationType.PARTICIPATION_REQUEST,
+                joiner.getUsername() + " partecipa al tuo evento \"" + event.getTitle() + "\"",
+                event.getId(), ReferenceType.EVENT);
+    }
+
+    @Transactional
+    public void notifyParticipationRemoved(User participant, Event event) {
+        create(participant, event.getOrganizer(), NotificationType.PARTICIPATION_REJECTED,
+                "Sei stato rimosso dall'evento \"" + event.getTitle() + "\"",
+                event.getId(), ReferenceType.EVENT);
+    }
+
+
+    @Transactional
+    public void notifyCommentLike(User commentOwner, User liker, PostComment comment) {
+        if (commentOwner.getId().equals(liker.getId())) return;
+        create(commentOwner, liker, NotificationType.LIKE,
+                liker.getUsername() + " ha messo like al tuo commento",
+                comment.getPost().getId(), ReferenceType.POST);
+    }
+
+    @Transactional
+    public void notifyCommentReply(User parentCommentOwner, User replier, PostComment parentComment) {
+        if (parentCommentOwner.getId().equals(replier.getId())) return;
+        create(parentCommentOwner, replier, NotificationType.COMMENT_REPLY,
+                replier.getUsername() + " ha risposto al tuo commento",
+                parentComment.getPost().getId(), ReferenceType.POST);
+    }
+
     @Transactional
     public void notifyParticipationAccepted(User participant, Event event) {
         create(participant, event.getOrganizer(), NotificationType.PARTICIPATION_ACCEPTED,
@@ -115,7 +144,7 @@ public class NotificationService {
     }
 
     private void create(User recipient, User actor, NotificationType type, String message, UUID referenceId,
-            ReferenceType referenceType) {
+                        ReferenceType referenceType) {
         Notification notification = new Notification(recipient, actor, type, message, referenceId, referenceType);
         notificationRepository.save(notification);
     }

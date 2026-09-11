@@ -18,7 +18,7 @@ public class MotorcycleModel {
     private UUID id;
 
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @Setter
     @JoinColumn(name = "brand_id", nullable = false)
     private Brand brand;

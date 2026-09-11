@@ -60,7 +60,7 @@ public class EventInviteService {
             notificationService.notifyEventInvite(invitedUser, event);
             return toDTO(invite);
         }
-        
+
         EventInvite invite = new EventInvite(event, invitedUser);
         eventInviteRepository.save(invite);
         notificationService.notifyEventInvite(invitedUser, event);
@@ -83,10 +83,9 @@ public class EventInviteService {
         eventInviteRepository.save(invite);
 
         if (accept) {
-            Participation participation = new Participation(invite.getEvent(),
-                    currentUser,
-                    ParticipationStatus.ACCEPTED);
+            Participation participation = new Participation(invite.getEvent(), currentUser, ParticipationStatus.ACCEPTED);
             participationRepository.save(participation);
+            notificationService.notifyEventJoined(invite.getEvent().getOrganizer(), currentUser, invite.getEvent());
         }
 
         return toDTO(invite);

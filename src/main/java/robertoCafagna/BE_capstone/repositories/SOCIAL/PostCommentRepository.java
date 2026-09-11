@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import robertoCafagna.BE_capstone.Interface.CommentReplyCount;
 import robertoCafagna.BE_capstone.Interface.PostCommentCount;
 import robertoCafagna.BE_capstone.entities.PostComment;
 
@@ -23,4 +24,12 @@ public interface PostCommentRepository extends JpaRepository<PostComment, UUID> 
 
     @Query("SELECT c.post.id AS postId, COUNT(c) AS count FROM PostComment c WHERE c.post.id IN :postIds GROUP BY c.post.id")
     List<PostCommentCount> countByPostIdIn(@Param("postIds") List<UUID> postIds);
+
+
+    Page<PostComment> findByPostIdAndParentCommentIsNullOrderByCreatedAtAsc(UUID postId, Pageable pageable);
+
+    List<PostComment> findByParentCommentIdOrderByCreatedAtAsc(UUID parentCommentId);
+
+    @Query("SELECT c.parentComment.id AS commentId, COUNT(c) AS count FROM PostComment c WHERE c.parentComment.id IN :commentIds GROUP BY c.parentComment.id")
+    List<CommentReplyCount> countRepliesByParentIdIn(@Param("commentIds") List<UUID> commentIds);
 }

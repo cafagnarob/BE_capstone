@@ -68,4 +68,9 @@ public class RideController {
         rideService.deleteRide(currentUser, rideId);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{rideId}/summary")
+    public ResponseEntity<RideSummaryDTO> getRideSummary(@PathVariable UUID rideId) {
+        return ResponseEntity.ok(rideService.getRideSummary(rideId));
+    }
 }

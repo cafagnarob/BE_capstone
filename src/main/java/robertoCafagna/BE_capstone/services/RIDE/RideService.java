@@ -53,6 +53,12 @@ public class RideService {
         return toSummaryDTO(ride);
     }
 
+    public RideSummaryDTO getRideSummary(UUID rideId) {
+        Ride ride = rideRepository.findById(rideId)
+                .orElseThrow(() -> new NotFoundException("Giro non trovato"));
+        return toSummaryDTO(ride);
+    }
+
 
     @Transactional
     public RideDetailDTO finishRide(User currentUser, UUID rideId, FinishRideRequestDTO body) {

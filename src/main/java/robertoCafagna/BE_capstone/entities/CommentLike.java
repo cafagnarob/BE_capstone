@@ -1,6 +1,5 @@
 package robertoCafagna.BE_capstone.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,38 +11,31 @@ import java.util.UUID;
 @Entity
 @Getter
 @NoArgsConstructor
-@ToString
-@Table(name = "post_likes",
-        uniqueConstraints = {@UniqueConstraint(
-                columnNames = {"user_id", "post_id"})})
-public class Like {
+public class CommentLike {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "user_id")
     @ToString.Exclude
-    @JsonIgnore
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "comment_id")
     @ToString.Exclude
-    @JsonIgnore
-    private Post post;
+    private PostComment comment;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public Like(User user, Post post) {
+    public CommentLike(User user, PostComment comment) {
         this.user = user;
-        this.post = post;
+        this.comment = comment;
     }
-
 
     @PrePersist
     private void beforeInsert() {
-        createdAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
     }
 }

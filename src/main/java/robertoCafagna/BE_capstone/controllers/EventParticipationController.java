@@ -73,4 +73,15 @@ public class EventParticipationController {
     ) {
         return ResponseEntity.ok(eventParticipationService.reject(organizer, eventId, participationId));
     }
+
+
+    @DeleteMapping("/{participationId}")
+    public ResponseEntity<Void> removeParticipant(
+            @AuthenticationPrincipal User organizer,
+            @PathVariable UUID eventId,
+            @PathVariable UUID participationId
+    ) {
+        eventParticipationService.removeParticipant(organizer, eventId, participationId);
+        return ResponseEntity.noContent().build();
+    }
 }

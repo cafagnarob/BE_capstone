@@ -11,5 +11,6 @@ public enum NotificationType {
     PARTICIPATION_REJECTED,
     ACCESS_CODE_REQUEST,
     ACCESS_CODE_GRANTED,
-    SYSTEM
+    SYSTEM,
+    COMMENT_REPLY
 }

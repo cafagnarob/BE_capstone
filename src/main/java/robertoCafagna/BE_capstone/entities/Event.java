@@ -23,7 +23,7 @@ public class Event {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organizer_id", nullable = false)
     @ToString.Exclude
     private User organizer;
@@ -88,7 +88,7 @@ public class Event {
     @ToString.Exclude
     private List<Participation> participants = new ArrayList<>();
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "route_id")
     @Setter
     private Route route;
@@ -98,7 +98,7 @@ public class Event {
     @Setter
     private EventType type;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_event_id")
     @Setter
     private Event parentEvent;

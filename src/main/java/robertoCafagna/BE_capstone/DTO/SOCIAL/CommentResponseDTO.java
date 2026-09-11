@@ -8,6 +8,9 @@ public record CommentResponseDTO(
         String authorUsername,
         String authorProfilePicture,
         String text,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        long likeCount,
+        boolean likedByCurrentUser,
+        long replyCount
 ) {
 }
