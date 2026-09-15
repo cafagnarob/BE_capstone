@@ -48,4 +48,45 @@ public class MailService {
                 """.formatted(username, verificationLink);
         sendHtmlEmail(to, "Conferma la tua email — Rider App", html);
     }
+
+    public void sendCatalogSuggestionEmail(String adminAddress, String reporterUsername, String reporterEmail,
+                                           String brandName, String modelName, Integer engineCc, String category,
+                                           Integer yearStart, Integer yearEnd, Integer horsePower, Integer weightKg,
+                                           String note) {
+        String html = """
+                <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+                    <h2>Segnalazione modello mancante</h2>
+                    <p><strong>Da:</strong> %s (%s)</p>
+                    <hr>
+                    <p><strong>Brand:</strong> %s</p>
+                    <p><strong>Modello:</strong> %s</p>
+                    <p><strong>Cilindrata:</strong> %s</p>
+                    <p><strong>Categoria:</strong> %s</p>
+                    <p><strong>Anni:</strong> %s</p>
+                    <p><strong>Potenza:</strong> %s</p>
+                    <p><strong>Peso:</strong> %s</p>
+                    <hr>
+                    <p><strong>Note aggiuntive:</strong><br>%s</p>
+                </div>
+                """.formatted(
+                reporterUsername, reporterEmail,
+                brandName,
+                modelName != null ? modelName : "—",
+                engineCc != null ? engineCc + " cc" : "—",
+                category != null ? category : "—",
+                formatYearRange(yearStart, yearEnd),
+                horsePower != null ? horsePower + " CV" : "—",
+                weightKg != null ? weightKg + " kg" : "—",
+                note != null && !note.isBlank() ? note : "—"
+        );
+        sendHtmlEmail(adminAddress, "FlowRides — Nuova segnalazione catalogo", html);
+    }
+
+    private String formatYearRange(Integer yearStart, Integer yearEnd) {
+        if (yearStart == null && yearEnd == null) return "—";
+        if (yearStart != null && yearEnd != null) return yearStart + " – " + yearEnd;
+        if (yearStart != null) return "Dal " + yearStart;
+        return "Fino al " + yearEnd;
+
+    }
 }
