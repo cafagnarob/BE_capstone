@@ -27,6 +27,7 @@ import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
 import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -146,6 +147,7 @@ public class UserService {
             throw new BadRequestException("La password attuale non è corretta");
         }
         currentUser.setPassword(passwordEncoder.encode(body.newPassword()));
+        currentUser.setTokensValidFrom(LocalDateTime.now());
         userRepository.save(currentUser);
     }
 
@@ -154,7 +156,6 @@ public class UserService {
     public MyProfileResponseDTO updateUsername(User currentUser, UpdateUsernameRequestDTO body) {
         User user = userRepository.findById(currentUser.getId())
                 .orElseThrow(() -> new NotFoundException("Utente non trovato"));
-
 
         if (!passwordEncoder.matches(body.currentPassword(), user.getPassword())) {
             throw new BadRequestException("Password non corretta");
@@ -166,6 +167,7 @@ public class UserService {
             throw new BadRequestException("Username già in uso");
         }
         user.setUsername(body.newUsername());
+        user.setTokensValidFrom(LocalDateTime.now());
         userRepository.save(user);
         return toMyProfileDTO(user);
     }
@@ -173,10 +175,8 @@ public class UserService {
 
     @Transactional
     public MyProfileResponseDTO updateEmail(User currentUser, UpdateEmailRequestDTO body) {
-
         User user = userRepository.findById(currentUser.getId())
                 .orElseThrow(() -> new NotFoundException("Utente non trovato"));
-
 
         if (!passwordEncoder.matches(body.currentPassword(), user.getPassword())) {
             throw new BadRequestException("Password non corretta");
@@ -188,6 +188,7 @@ public class UserService {
             throw new BadRequestException("Email già in uso");
         }
         user.setEmail(body.newEmail());
+        user.setTokensValidFrom(LocalDateTime.now());
         userRepository.save(user);
         return toMyProfileDTO(user);
     }

@@ -19,6 +19,8 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.UUID;
 
 @Component
@@ -53,9 +55,17 @@ public class TokenFilter extends OncePerRequestFilter {
                     .orElseThrow(() -> new UnauthorizedException("Utente associato al token non trovato!"));
 
             if (!currentUtente.isActive()) {
-                throw new UnauthorizedException(
-                        "Account disattivato"
-                );
+                throw new UnauthorizedException("Account disattivato");
+            }
+
+            if (currentUtente.getTokensValidFrom() != null) {
+                Date issuedAt = jwtTools.extractIssuedAtFromToken(accessToken);
+                LocalDateTime issuedAtLocal = issuedAt.toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDateTime();
+                if (issuedAtLocal.isBefore(currentUtente.getTokensValidFrom())) {
+                    throw new UnauthorizedException("Sessione scaduta per motivi di sicurezza, effettua nuovamente il login.");
+                }
             }
 
             UsernamePasswordAuthenticationToken authentication =
@@ -78,4 +88,6 @@ public class TokenFilter extends OncePerRequestFilter {
         return new AntPathMatcher()
                 .match("/auth/**", request.getServletPath());
     }
+
+
 }

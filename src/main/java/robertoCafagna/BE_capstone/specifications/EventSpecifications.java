@@ -1,12 +1,17 @@
 package robertoCafagna.BE_capstone.specifications;
 
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 import robertoCafagna.BE_capstone.entities.Event;
+import robertoCafagna.BE_capstone.entities.Participation;
 import robertoCafagna.BE_capstone.enums.EventStatus;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
+import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 public class EventSpecifications {
 
@@ -43,5 +48,40 @@ public class EventSpecifications {
 
     public static Specification<Event> notEnded(LocalDateTime now) {
         return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("endDateTime"), now);
+    }
+
+    public static Specification<Event> hasOrganizer(UUID organizerId) {
+        return (root, query, cb) -> cb.equal(root.get("organizer").get("id"), organizerId);
+    }
+
+    public static Specification<Event> isCurrent(LocalDateTime now) {
+        return (root, query, cb) -> cb.and(
+                cb.equal(root.get("status"), EventStatus.ACTIVE),
+                cb.greaterThan(root.get("endDateTime"), now)
+        );
+    }
+
+    public static Specification<Event> isHistory(LocalDateTime now) {
+        return (root, query, cb) -> cb.or(
+                cb.notEqual(root.get("status"), EventStatus.ACTIVE),
+                cb.lessThanOrEqualTo(root.get("endDateTime"), now)
+        );
+    }
+
+    public static Specification<Event> organizedOrParticipatedBy(UUID userId) {
+        return (root, query, cb) -> {
+            Subquery<UUID> subquery = query.subquery(UUID.class);
+            Root<Participation> pRoot = subquery.from(Participation.class);
+            subquery.select(pRoot.get("event").get("id"))
+                    .where(cb.and(
+                            cb.equal(pRoot.get("user").get("id"), userId),
+                            pRoot.get("status").in(List.of(ParticipationStatus.PENDING, ParticipationStatus.ACCEPTED))
+                    ));
+
+            return cb.or(
+                    cb.equal(root.get("organizer").get("id"), userId),
+                    root.get("id").in(subquery)
+            );
+        };
     }
 }

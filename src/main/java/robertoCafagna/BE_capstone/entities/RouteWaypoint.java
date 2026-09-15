@@ -28,21 +28,47 @@ public class RouteWaypoint {
     private Route route;
 
     @Column(nullable = false)
+    @Setter
     private double latitude;
 
     @Column(nullable = false)
+    @Setter
     private double longitude;
 
     @Column(nullable = false)
+    @Setter
     private int sequence;
 
     @Column
+    @Setter
     private String label;
+
+    @Column
+    @Setter
+    private String imageUrl;
+
+    @Column
+    @Setter
+    private String imagePublicId;
+
+    @Column
+    @Setter
+    private Integer stopMinutes;
 
     public RouteWaypoint(double latitude, double longitude, int sequence, String label) {
         this.latitude = latitude;
         this.longitude = longitude;
         this.sequence = sequence;
         this.label = label;
+        this.stopMinutes = null;
+    }
+
+
+    public RouteWaypoint(double latitude, double longitude, int sequence, String label, Integer stopMinutes) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.sequence = sequence;
+        this.label = label;
+        this.stopMinutes = stopMinutes;
     }
 }

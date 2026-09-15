@@ -103,19 +103,30 @@ public class EventController {
     @GetMapping("/organized")
     public ResponseEntity<Page<EventSummaryDTO>> getOrganizedEvents(
             @AuthenticationPrincipal User currentUser,
+            @RequestParam(defaultValue = "false") boolean history,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(eventService.getOrganizedEvents(currentUser, page, size));
+        return ResponseEntity.ok(eventService.getOrganizedEvents(currentUser, history, page, size));
     }
 
     @GetMapping("/participating")
     public ResponseEntity<Page<EventSummaryDTO>> getParticipatingEvents(
             @AuthenticationPrincipal User currentUser,
+            @RequestParam(defaultValue = "false") boolean history,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(eventService.getParticipatingEvents(currentUser, page, size));
+        return ResponseEntity.ok(eventService.getParticipatingEvents(currentUser, history, page, size));
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<Page<EventSummaryDTO>> getHistoryEvents(
+            @AuthenticationPrincipal User currentUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(eventService.getHistoryEvents(currentUser, page, size));
     }
 
     @PostMapping("/{tripId}/days")
@@ -162,5 +173,15 @@ public class EventController {
     ) {
         eventService.rejectAccessCodeRequest(currentUser, eventId, requestId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{tripId}/days/{dayId}")
+    public ResponseEntity<EventDetailDTO> updateDay(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID tripId,
+            @PathVariable UUID dayId,
+            @RequestBody @Valid UpdateEventDayRequestDTO body
+    ) {
+        return ResponseEntity.ok(eventService.updateDay(currentUser, tripId, dayId, body));
     }
 }

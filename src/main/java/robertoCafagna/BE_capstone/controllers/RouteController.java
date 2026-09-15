@@ -5,16 +5,16 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import robertoCafagna.BE_capstone.DTO.RIDE.CreateRouteRequestDTO;
-import robertoCafagna.BE_capstone.DTO.RIDE.PreviewRouteRequestDTO;
-import robertoCafagna.BE_capstone.DTO.RIDE.RoutePreviewDTO;
-import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
+import org.springframework.web.multipart.MultipartFile;
+import robertoCafagna.BE_capstone.DTO.RIDE.*;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.services.RIDE.RouteService;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -24,13 +24,34 @@ public class RouteController {
 
     private final RouteService routeService;
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RouteResponseDTO> createRoute(
             @AuthenticationPrincipal User currentUser,
-            @RequestBody @Valid CreateRouteRequestDTO body
+            @RequestPart("data") @Valid CreateRouteRequestDTO body,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images
     ) {
-        RouteResponseDTO created = routeService.createRoute(currentUser, body);
+        RouteResponseDTO created = routeService.createRoute(currentUser, body, images);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PatchMapping(value = "/{routeId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RouteResponseDTO> updateRoute(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID routeId,
+            @RequestPart("data") @Valid CreateRouteRequestDTO body,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images
+    ) {
+        return ResponseEntity.ok(routeService.updateRoute(currentUser, routeId, body, images));
+    }
+
+    @PatchMapping(value = "/{routeId}/waypoints/{waypointId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RouteWaypointResponseDTO> updateWaypointImage(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID routeId,
+            @PathVariable UUID waypointId,
+            @RequestParam("image") MultipartFile image
+    ) {
+        return ResponseEntity.ok(routeService.updateWaypointImage(currentUser, routeId, waypointId, image));
     }
 
     @GetMapping("/{routeId}")

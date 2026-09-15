@@ -32,12 +32,15 @@ public class Route {
     private String name;
 
     @Column(columnDefinition = "TEXT", nullable = false)
+    @Setter
     private String encodedPolyline; // geometria stradale calcolata da Mapbox
 
     @Column(nullable = false)
+    @Setter
     private double distanceMeters;
 
     @Column(nullable = false)
+    @Setter
     private double durationSeconds;
 
     @Column(nullable = false, updatable = false)
@@ -51,12 +54,15 @@ public class Route {
     private List<RouteWaypoint> waypoints = new ArrayList<>();
 
     @Column(nullable = false)
+    @Setter
     private boolean avoidHighways;
 
     @Column(nullable = false)
+    @Setter
     private boolean avoidTolls;
 
     @Column(nullable = false)
+    @Setter
     private boolean avoidFerries;
 
     @Column(nullable = false)

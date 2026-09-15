@@ -3,16 +3,14 @@ package robertoCafagna.BE_capstone.DTO.EVENT;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public record UpdateEventRequestDTO(
+public record UpdateEventDayRequestDTO(
         String title,
         String description,
-        LocalDateTime startDateTime,
-        LocalDateTime endDateTime,
         UUID routeId,
         Double meetingPointLat,
         Double meetingPointLng,
-        Integer bufferMinutes,
-        Integer maxParticipants,
-        Boolean autoApprove
+        LocalDateTime startDateTime,
+        LocalDateTime endDateTime,
+        Integer bufferMinutes
 ) {
 }

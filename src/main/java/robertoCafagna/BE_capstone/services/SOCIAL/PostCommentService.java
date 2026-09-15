@@ -135,9 +135,14 @@ public class PostCommentService {
 
         if (comment.getParentComment() == null) {
             List<PostComment> replies = postCommentRepository.findByParentCommentIdOrderByCreatedAtAsc(commentId);
-            postCommentRepository.deleteAll(replies);
+            if (!replies.isEmpty()) {
+                List<UUID> replyIds = replies.stream().map(PostComment::getId).toList();
+                commentLikeRepository.deleteByCommentIdIn(replyIds);
+                postCommentRepository.deleteAll(replies);
+            }
         }
 
+        commentLikeRepository.deleteByCommentId(commentId);
         postCommentRepository.delete(comment);
         log.info("Commento {} eliminato (utente {})", commentId, currentUser.getId());
     }

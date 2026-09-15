@@ -52,4 +52,13 @@ public class JWTTools {
                 .getPayload()
                 .getSubject();
     }
+
+    public Date extractIssuedAtFromToken(String token) {
+        return Jwts.parser()
+                .verifyWith(getSecretKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getIssuedAt();
+    }
 }

@@ -129,6 +129,10 @@ public class User implements UserDetails {
     @Setter
     private LocalDateTime emailVerificationTokenExpiry;
 
+    @Column
+    @Setter
+    private LocalDateTime tokensValidFrom;
+
 
     public User(String username, String email,
                 String password) {

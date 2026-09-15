@@ -147,16 +147,42 @@ public class EventService {
 
         if (body.title() != null) event.setTitle(body.title());
         if (body.description() != null) event.setDescription(body.description());
-        if (body.meetingPointLat() != null) event.setMeetingPointLat(body.meetingPointLat());
-        if (body.meetingPointLng() != null) event.setMeetingPointLng(body.meetingPointLng());
         if (body.maxParticipants() != null) event.setMaxParticipants(body.maxParticipants());
+        if (body.autoApprove() != null) event.setAutoApprove(body.autoApprove());
+
+        boolean meetingPointChanged = false;
+
+        if (body.routeId() != null && (event.getRoute() == null || !body.routeId().equals(event.getRoute().getId()))) {
+            Route route = routeRepository.findById(body.routeId())
+                    .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
+            if (!route.getCreator().getId().equals(currentUser.getId())) {
+                throw new ForbiddenException("Non puoi usare un percorso che non hai creato tu");
+            }
+            if (route.getWaypoints().isEmpty()) {
+                throw new BadRequestException("Il percorso selezionato non ha punti validi");
+            }
+            event.setRoute(route);
+            RouteWaypoint start = route.getWaypoints().get(0);
+            event.setMeetingPointLat(start.getLatitude());
+            event.setMeetingPointLng(start.getLongitude());
+            meetingPointChanged = true;
+        } else if (body.meetingPointLat() != null && body.meetingPointLng() != null) {
+            event.setMeetingPointLat(body.meetingPointLat());
+            event.setMeetingPointLng(body.meetingPointLng());
+            meetingPointChanged = true;
+        }
+
+        if (meetingPointChanged) {
+            String address = reverseGeocodingService.reverseGeocode(event.getMeetingPointLat(), event.getMeetingPointLng());
+            event.setMeetingPointAddress(address);
+        }
 
         boolean startChanged = body.startDateTime() != null && !body.startDateTime().equals(event.getStartDateTime());
         if (startChanged) {
             event.setStartDateTime(body.startDateTime());
         }
 
-        if (event.getType() == EventType.STANDARD && (startChanged || body.bufferMinutes() != null)) {
+        if (event.getType() == EventType.STANDARD && (startChanged || body.bufferMinutes() != null || meetingPointChanged)) {
             long bufferSeconds = body.bufferMinutes() != null ? body.bufferMinutes() * 60L : 0;
             event.setEndDateTime(event.getStartDateTime().plusSeconds((long) event.getRoute().getDurationSeconds() + bufferSeconds));
         } else if (event.getType() == EventType.RADUNO && body.endDateTime() != null) {
@@ -167,7 +193,93 @@ public class EventService {
         }
 
         eventRepository.save(event);
+        notifyParticipantsOfUpdate(event);
         return toDetailDTO(currentUser, event, countAccepted(eventId), false);
+    }
+
+
+    @Transactional
+    public EventDetailDTO updateDay(User currentUser, UUID tripId, UUID dayId, UpdateEventDayRequestDTO body) {
+        Event trip = eventRepository.findById(tripId)
+                .orElseThrow(() -> new NotFoundException("Viaggio non trovato"));
+        if (!trip.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Non sei l'organizzatore di questo viaggio");
+        }
+
+        Event day = eventRepository.findById(dayId)
+                .orElseThrow(() -> new NotFoundException("Giorno non trovato"));
+        if (day.getParentEvent() == null || !day.getParentEvent().getId().equals(tripId)) {
+            throw new NotFoundException("Giorno non trovato per questo viaggio");
+        }
+
+        if (body.title() != null) day.setTitle(body.title());
+        if (body.description() != null) day.setDescription(body.description());
+
+        boolean meetingPointChanged = false;
+
+        if (body.routeId() != null && (day.getRoute() == null || !body.routeId().equals(day.getRoute().getId()))) {
+            Route route = routeRepository.findById(body.routeId())
+                    .orElseThrow(() -> new NotFoundException("Percorso non trovato"));
+            if (!route.getCreator().getId().equals(currentUser.getId())) {
+                throw new ForbiddenException("Non puoi usare un percorso che non hai creato tu");
+            }
+            if (route.getWaypoints().isEmpty()) {
+                throw new BadRequestException("Il percorso selezionato non ha punti validi");
+            }
+            day.setRoute(route);
+            RouteWaypoint start = route.getWaypoints().get(0);
+            day.setMeetingPointLat(start.getLatitude());
+            day.setMeetingPointLng(start.getLongitude());
+            meetingPointChanged = true;
+        } else if (body.meetingPointLat() != null && body.meetingPointLng() != null) {
+            day.setMeetingPointLat(body.meetingPointLat());
+            day.setMeetingPointLng(body.meetingPointLng());
+            meetingPointChanged = true;
+        }
+
+        if (meetingPointChanged) {
+            String address = reverseGeocodingService.reverseGeocode(day.getMeetingPointLat(), day.getMeetingPointLng());
+            day.setMeetingPointAddress(address);
+        }
+
+        boolean startChanged = body.startDateTime() != null && !body.startDateTime().equals(day.getStartDateTime());
+        if (startChanged) {
+            day.setStartDateTime(body.startDateTime());
+        }
+
+        if (day.getType() == EventType.STANDARD && (startChanged || body.bufferMinutes() != null || meetingPointChanged)) {
+            long bufferSeconds = body.bufferMinutes() != null ? body.bufferMinutes() * 60L : 0;
+            day.setEndDateTime(day.getStartDateTime().plusSeconds((long) day.getRoute().getDurationSeconds() + bufferSeconds));
+        } else if (day.getType() == EventType.RADUNO && body.endDateTime() != null) {
+            if (body.endDateTime().isBefore(day.getStartDateTime())) {
+                throw new BadRequestException("La data di fine non può precedere quella di inizio");
+            }
+            day.setEndDateTime(body.endDateTime());
+        }
+
+        eventRepository.save(day);
+
+        LocalDateTime newTripEnd = trip.getChildren().stream()
+                .map(c -> c.getId().equals(day.getId()) ? day.getEndDateTime() : c.getEndDateTime())
+                .max(LocalDateTime::compareTo)
+                .orElse(trip.getStartDateTime());
+        trip.setEndDateTime(newTripEnd);
+        eventRepository.save(trip);
+
+        notifyParticipantsOfUpdate(trip);
+
+        return toDetailDTO(currentUser, day, 0, false);
+    }
+
+
+    private void notifyParticipantsOfUpdate(Event event) {
+        List<Participation> toNotify = new ArrayList<>();
+        toNotify.addAll(participationRepository.findByEventIdAndStatus(event.getId(), ParticipationStatus.ACCEPTED));
+        toNotify.addAll(participationRepository.findByEventIdAndStatus(event.getId(), ParticipationStatus.PENDING));
+
+        for (Participation p : toNotify) {
+            notificationService.notifyEventUpdated(p.getUser(), event);
+        }
     }
 
     @Transactional
@@ -219,10 +331,11 @@ public class EventService {
         }
 
         if (event.getVisibility() == EventVisibility.INVITE_ONLY) {
-            boolean hasInvite = eventInviteRepository
+            boolean hasPendingInvite = eventInviteRepository
                     .findByEventIdAndInvitedUserId(eventId, currentUser.getId())
-                    .isPresent();
-            if (hasInvite) {
+                    .map(inv -> inv.getStatus() == InviteStatus.PENDING)
+                    .orElse(false);
+            if (hasPendingInvite) {
                 return toDetailDTO(currentUser, event, countAccepted(eventId), false);
             }
         }
@@ -323,19 +436,44 @@ public class EventService {
         return participationRepository.countByEventIdAndStatus(eventId, ParticipationStatus.ACCEPTED);
     }
 
-    public Page<EventSummaryDTO> getOrganizedEvents(User currentUser, int page, int size) {
-        Pageable pageable = buildPageable(page, size);
-        return eventRepository.findByOrganizerIdAndParentEventIsNullOrderByStartDateTimeDesc(currentUser.getId(), pageable)
+    public Page<EventSummaryDTO> getOrganizedEvents(User currentUser, boolean history, int page, int size) {
+        Pageable base = buildPageable(page, size);
+
+        List<Specification<Event>> specs = new ArrayList<>();
+        specs.add(EventSpecifications.hasOrganizer(currentUser.getId()));
+        specs.add(EventSpecifications.hasNoParent());
+        specs.add(history ? EventSpecifications.isHistory(LocalDateTime.now()) : EventSpecifications.isCurrent(LocalDateTime.now()));
+
+        Sort sort = history ? Sort.by("startDateTime").descending() : Sort.by("startDateTime").ascending();
+        Pageable pageable = PageRequest.of(base.getPageNumber(), base.getPageSize(), sort);
+
+        return eventRepository.findAll(Specification.allOf(specs), pageable)
                 .map(e -> toSummaryDTO(currentUser, e));
     }
 
-    public Page<EventSummaryDTO> getParticipatingEvents(User currentUser, int page, int size) {
+    public Page<EventSummaryDTO> getParticipatingEvents(User currentUser, boolean history, int page, int size) {
         Pageable pageable = buildPageable(page, size);
-        return eventRepository.findParticipatingEvents(
-                currentUser.getId(),
-                List.of(ParticipationStatus.PENDING, ParticipationStatus.ACCEPTED),
-                pageable
-        ).map(e -> toSummaryDTO(currentUser, e));
+        List<ParticipationStatus> statuses = List.of(ParticipationStatus.PENDING, ParticipationStatus.ACCEPTED);
+
+        Page<Event> events = history
+                ? eventRepository.findHistoryParticipatingEvents(currentUser.getId(), statuses, EventStatus.ACTIVE, LocalDateTime.now(), pageable)
+                : eventRepository.findCurrentParticipatingEvents(currentUser.getId(), statuses, EventStatus.ACTIVE, LocalDateTime.now(), pageable);
+
+        return events.map(e -> toSummaryDTO(currentUser, e));
+    }
+
+    public Page<EventSummaryDTO> getHistoryEvents(User currentUser, int page, int size) {
+        if (size <= 0 || size > 50) size = 20;
+        if (page < 0) page = 0;
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startDateTime").descending());
+
+        List<Specification<Event>> specs = new ArrayList<>();
+        specs.add(EventSpecifications.organizedOrParticipatedBy(currentUser.getId()));
+        specs.add(EventSpecifications.hasNoParent());
+        specs.add(EventSpecifications.isHistory(LocalDateTime.now()));
+
+        return eventRepository.findAll(Specification.allOf(specs), pageable)
+                .map(e -> toSummaryDTO(currentUser, e));
     }
 
     private Pageable buildPageable(int page, int size) {
@@ -380,6 +518,32 @@ public class EventService {
             return new MeetingPoint(null, directLat, directLng, address);
         }
         return new MeetingPoint(null, null, null, null);
+    }
+
+
+    @Transactional
+    public void handleRouteUpdated(UUID routeId, double newDurationSeconds, double oldDurationSeconds) {
+        double deltaSeconds = newDurationSeconds - oldDurationSeconds;
+        if (deltaSeconds == 0) return;
+
+        List<Event> affected = eventRepository.findByRouteId(routeId);
+        for (Event event : affected) {
+            if (event.getType() != EventType.STANDARD) continue;
+
+            event.setEndDateTime(event.getEndDateTime().plusSeconds((long) deltaSeconds));
+            eventRepository.save(event);
+            notifyParticipantsOfUpdate(event.getParentEvent() != null ? event.getParentEvent() : event);
+
+            if (event.getParentEvent() != null) {
+                Event trip = event.getParentEvent();
+                LocalDateTime newTripEnd = trip.getChildren().stream()
+                        .map(c -> c.getId().equals(event.getId()) ? event.getEndDateTime() : c.getEndDateTime())
+                        .max(LocalDateTime::compareTo)
+                        .orElse(trip.getStartDateTime());
+                trip.setEndDateTime(newTripEnd);
+                eventRepository.save(trip);
+            }
+        }
     }
 
 
@@ -482,7 +646,7 @@ public class EventService {
                 event.getRoute().getId(), event.getRoute().getName(), List.of(), null,
                 event.getRoute().getDistanceMeters(), event.getRoute().getDurationSeconds(),
                 event.getRoute().isAvoidHighways(), event.getRoute().isAvoidTolls(), event.getRoute().isAvoidFerries(),
-                null, event.getRoute().getCreatedAt(), false, true
+                null, event.getRoute().getCreatedAt(), false, true, false
         ) : null;
 
         AccessRequestStatus myRequestStatus = accessCodeRequestRepository

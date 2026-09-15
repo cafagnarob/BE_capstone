@@ -17,6 +17,7 @@ public record RouteResponseDTO(
         String googleMapsUrl,
         LocalDateTime createdAt,
         boolean importable,
-        boolean locked
+        boolean locked,
+        boolean owner
 ) {
 }

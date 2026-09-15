@@ -15,7 +15,7 @@ public class RouteMapper {
 
     public RouteResponseDTO toDTO(Route route) {
         List<RouteWaypointResponseDTO> waypointDTOs = route.getWaypoints().stream()
-                .map(w -> new RouteWaypointResponseDTO(w.getLatitude(), w.getLongitude(), w.getSequence(), w.getLabel()))
+                .map(w -> new RouteWaypointResponseDTO(w.getId(), w.getLatitude(), w.getLongitude(), w.getSequence(), w.getLabel(), w.getImageUrl(), w.getStopMinutes()))
                 .toList();
 
         String googleMapsUrl = GoogleMapsLinkBuilder.buildNavigationUrl(route.getWaypoints());
@@ -24,7 +24,7 @@ public class RouteMapper {
                 route.getId(), route.getName(), waypointDTOs,
                 route.getEncodedPolyline(), route.getDistanceMeters(), route.getDurationSeconds(),
                 route.isAvoidHighways(), route.isAvoidTolls(), route.isAvoidFerries(),
-                googleMapsUrl, route.getCreatedAt(), route.isImportable(), false
+                googleMapsUrl, route.getCreatedAt(), route.isImportable(), false, true
         );
     }
 }

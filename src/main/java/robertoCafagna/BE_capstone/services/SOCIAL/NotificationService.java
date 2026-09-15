@@ -137,6 +137,13 @@ public class NotificationService {
     }
 
     @Transactional
+    public void notifyEventUpdated(User recipient, Event event) {
+        create(recipient, event.getOrganizer(), NotificationType.EVENT_UPDATED,
+                "L'evento \"" + event.getTitle() + "\" è stato modificato dall'organizzatore",
+                event.getId(), ReferenceType.EVENT);
+    }
+
+    @Transactional
     public void notifyParticipationRejected(User participant, Event event) {
         create(participant, event.getOrganizer(), NotificationType.PARTICIPATION_REJECTED,
                 "La tua richiesta per \"" + event.getTitle() + "\" è stata rifiutata",
