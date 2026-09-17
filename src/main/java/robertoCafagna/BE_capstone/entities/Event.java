@@ -98,6 +98,15 @@ public class Event {
     @Setter
     private EventType type;
 
+
+    @Column
+    @Setter
+    private String coverPhotoUrl;
+
+    @Column
+    @Setter
+    private String coverPhotoPublicId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_event_id")
     @Setter

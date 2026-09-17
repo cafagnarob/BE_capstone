@@ -5,9 +5,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import robertoCafagna.BE_capstone.DTO.EVENT.*;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.services.EVENT.EventService;
@@ -118,6 +120,15 @@ public class EventController {
             @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(eventService.getParticipatingEvents(currentUser, history, page, size));
+    }
+
+    @PatchMapping(value = "/{eventId}/cover-photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<EventDetailDTO> updateCoverPhoto(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID eventId,
+            @RequestParam("image") MultipartFile image
+    ) {
+        return ResponseEntity.ok(eventService.updateCoverPhoto(currentUser, eventId, image));
     }
 
     @GetMapping("/history")

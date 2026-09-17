@@ -98,6 +98,15 @@ public class RouteService {
         return routeMapper.toDTO(route);
     }
 
+    public List<RouteResponseDTO> getImportableRoutesForMap(User currentUser) {
+        Pageable pageable = PageRequest.of(0, 50, Sort.by("createdAt").descending());
+        return routeRepository.findByImportableTrueAndCreatorIdNot(currentUser.getId(), pageable)
+                .stream()
+                .filter(r -> !r.getWaypoints().isEmpty())
+                .map(r -> toDTO(r, true, false))
+                .toList();
+    }
+
     @Transactional
     public RouteResponseDTO updateRoute(User currentUser, UUID routeId, CreateRouteRequestDTO body, List<MultipartFile> images) {
         Route route = routeRepository.findByIdWithWaypoints(routeId)

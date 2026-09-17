@@ -33,6 +33,7 @@ public record EventDetailDTO(
         List<EventSummaryDTO> children,
         Double totalDistanceMeters,
         AccessRequestStatus myAccessRequestStatus,
-        UUID myInviteId
+        UUID myInviteId,
+        String coverPhotoUrl
 ) {
 }

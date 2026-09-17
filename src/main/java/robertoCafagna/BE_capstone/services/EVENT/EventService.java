@@ -10,6 +10,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import robertoCafagna.BE_capstone.DTO.EVENT.*;
 import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
@@ -24,9 +25,11 @@ import robertoCafagna.BE_capstone.repositories.EVENT.EventInviteRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
+import robertoCafagna.BE_capstone.services.CloudinaryService;
 import robertoCafagna.BE_capstone.services.SOCIAL.NotificationService;
 import robertoCafagna.BE_capstone.specifications.EventSpecifications;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +50,7 @@ public class EventService {
     private final NotificationService notificationService;
     private final AccessCodeRequestRepository accessCodeRequestRepository;
     private final EventInviteRepository eventInviteRepository;
+    private final CloudinaryService cloudinaryService;
 
     @Transactional
     public EventDetailDTO createEvent(User organizer, CreateEventRequestDTO body) {
@@ -546,6 +550,34 @@ public class EventService {
         }
     }
 
+    @Transactional
+    public EventDetailDTO updateCoverPhoto(User currentUser, UUID eventId, MultipartFile image) {
+        Event event = getOwnedEvent(currentUser, eventId);
+
+        String oldPublicId = event.getCoverPhotoPublicId();
+
+        CloudinaryService.UploadResult result;
+        try {
+            result = cloudinaryService.uploadImage(image, "riders-app/events/covers");
+        } catch (IOException e) {
+            throw new BadRequestException("Errore durante il caricamento della foto di copertina");
+        }
+
+        event.setCoverPhotoUrl(result.url());
+        event.setCoverPhotoPublicId(result.publicId());
+        eventRepository.save(event);
+
+        if (oldPublicId != null) {
+            try {
+                cloudinaryService.deleteImage(oldPublicId);
+            } catch (IOException e) {
+                log.warn("Impossibile cancellare la vecchia foto di copertina dell'evento {}", eventId, e);
+            }
+        }
+
+        return toDetailDTO(currentUser, event, countAccepted(eventId), false);
+    }
+
 
     @Transactional
     public void requestAccessCode(User currentUser, UUID eventId) {
@@ -662,7 +694,7 @@ public class EventService {
                 event.getVisibility(), event.isAutoApprove(), event.getStatus(), event.getCreatedAt(),
                 routeSummary, myStatus(currentUser, event.getId()), false, true,
                 event.getType(), null, null, null, null,
-                myRequestStatus, null
+                myRequestStatus, null, null
         );
     }
 
@@ -700,7 +732,7 @@ public class EventService {
                 event.getType(),
                 event.getParentEvent() != null ? event.getParentEvent().getId() : null,
                 event.getParentEvent() != null ? event.getParentEvent().getTitle() : null,
-                children, totalDistanceMeters, null, myInviteId
+                children, totalDistanceMeters, null, myInviteId, event.getCoverPhotoUrl()
         );
     }
 

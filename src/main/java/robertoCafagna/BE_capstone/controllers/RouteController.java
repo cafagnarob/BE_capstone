@@ -44,6 +44,14 @@ public class RouteController {
         return ResponseEntity.ok(routeService.updateRoute(currentUser, routeId, body, images));
     }
 
+    @GetMapping("/importable")
+    public ResponseEntity<List<RouteResponseDTO>> getImportableRoutesForMap(
+            @AuthenticationPrincipal User currentUser
+    ) {
+        return ResponseEntity.ok(routeService.getImportableRoutesForMap(currentUser));
+    }
+
+
     @PatchMapping(value = "/{routeId}/waypoints/{waypointId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RouteWaypointResponseDTO> updateWaypointImage(
             @AuthenticationPrincipal User currentUser,
