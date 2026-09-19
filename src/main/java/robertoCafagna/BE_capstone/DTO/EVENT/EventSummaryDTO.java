@@ -1,9 +1,6 @@
 package robertoCafagna.BE_capstone.DTO.EVENT;
 
-import robertoCafagna.BE_capstone.enums.EventStatus;
-import robertoCafagna.BE_capstone.enums.EventType;
-import robertoCafagna.BE_capstone.enums.EventVisibility;
-import robertoCafagna.BE_capstone.enums.ParticipationStatus;
+import robertoCafagna.BE_capstone.enums.*;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -22,6 +19,8 @@ public record EventSummaryDTO(
         boolean organizer,
         Double meetingPointLat,
         Double meetingPointLng,
-        EventType type
+        EventType type,
+        Integer tripDurationDays,
+        DistanceBucket lockedDistanceBucket
 ) {
 }

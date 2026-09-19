@@ -98,13 +98,37 @@ public class RouteService {
         return routeMapper.toDTO(route);
     }
 
-    public List<RouteResponseDTO> getImportableRoutesForMap(User currentUser) {
-        Pageable pageable = PageRequest.of(0, 50, Sort.by("createdAt").descending());
-        return routeRepository.findByImportableTrueAndCreatorIdNot(currentUser.getId(), pageable)
+    public List<RouteResponseDTO> getImportableRoutesForMap(User currentUser, Double lat, Double lng) {
+        List<Route> candidates = routeRepository.findByImportableTrueAndCreatorIdNot(currentUser.getId())
                 .stream()
                 .filter(r -> !r.getWaypoints().isEmpty())
-                .map(r -> toDTO(r, true, false))
                 .toList();
+
+        List<Route> selected;
+        if (lat != null && lng != null) {
+            selected = candidates.stream()
+                    .sorted(Comparator.comparingDouble(r -> haversineKm(lat, lng,
+                            r.getWaypoints().get(0).getLatitude(), r.getWaypoints().get(0).getLongitude())))
+                    .limit(50)
+                    .toList();
+        } else {
+            selected = candidates.stream()
+                    .sorted(Comparator.comparing(Route::getCreatedAt).reversed())
+                    .limit(50)
+                    .toList();
+        }
+
+        return selected.stream().map(r -> toDTO(r, true, false)).toList();
+    }
+
+    private double haversineKm(double lat1, double lng1, double lat2, double lng2) {
+        double R = 6371;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return R * 2 * Math.asin(Math.sqrt(a));
     }
 
     @Transactional

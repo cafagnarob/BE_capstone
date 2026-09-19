@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import robertoCafagna.BE_capstone.entities.Route;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,4 +26,6 @@ public interface RouteRepository extends JpaRepository<Route, UUID> {
     boolean existsByIdAndCreatorId(UUID id, UUID creatorId);
 
     Page<Route> findByImportableTrueAndCreatorIdNot(UUID creatorId, Pageable pageable);
+
+    List<Route> findByImportableTrueAndCreatorIdNot(UUID creatorId);
 }

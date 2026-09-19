@@ -46,9 +46,11 @@ public class RouteController {
 
     @GetMapping("/importable")
     public ResponseEntity<List<RouteResponseDTO>> getImportableRoutesForMap(
-            @AuthenticationPrincipal User currentUser
+            @AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng
     ) {
-        return ResponseEntity.ok(routeService.getImportableRoutesForMap(currentUser));
+        return ResponseEntity.ok(routeService.getImportableRoutesForMap(currentUser, lat, lng));
     }
 
 

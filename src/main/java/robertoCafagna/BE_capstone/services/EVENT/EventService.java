@@ -28,12 +28,17 @@ import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
 import robertoCafagna.BE_capstone.services.CloudinaryService;
 import robertoCafagna.BE_capstone.services.SOCIAL.NotificationService;
 import robertoCafagna.BE_capstone.specifications.EventSpecifications;
+import robertoCafagna.BE_capstone.utils.GeoUtils;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -107,6 +112,14 @@ public class EventService {
         Event trip = eventRepository.findById(tripId)
                 .orElseThrow(() -> new NotFoundException("Viaggio non trovato"));
 
+        LocalDate expectedDate = trip.getChildren().isEmpty()
+                ? trip.getStartDateTime().toLocalDate()
+                : trip.getChildren().get(trip.getChildren().size() - 1).getStartDateTime().toLocalDate().plusDays(1);
+
+        if (!body.startDateTime().toLocalDate().equals(expectedDate)) {
+            throw new BadRequestException("Il giorno " + (trip.getChildren().size() + 1) + " deve iniziare il " + expectedDate + ", un giorno dopo il precedente");
+        }
+
         if (!trip.getOrganizer().getId().equals(organizer.getId())) {
             throw new ForbiddenException("Non sei l'organizzatore di questo viaggio");
         }
@@ -122,6 +135,11 @@ public class EventService {
 
         LocalDateTime dayEndDateTime = resolveEndDateTime(body.type(), body.startDateTime(), body.endDateTime(), body.bufferMinutes(), mp.route());
 
+
+        if (dayEndDateTime.isAfter(body.startDateTime().plusHours(24))) {
+            throw new BadRequestException("La durata di un giorno non può superare le 24 ore");
+        }
+
         Event day = new Event(
                 organizer, body.title(), body.description(),
                 body.startDateTime(), dayEndDateTime,
@@ -130,6 +148,11 @@ public class EventService {
         );
         day.setMeetingPointAddress(mp.address());
         day.setParentEvent(trip);
+
+
+        if (day.getEndDateTime().isAfter(day.getStartDateTime().plusHours(24))) {
+            throw new BadRequestException("La durata di un giorno non può superare le 24 ore");
+        }
 
         eventRepository.save(day);
 
@@ -181,7 +204,8 @@ public class EventService {
             event.setMeetingPointAddress(address);
         }
 
-        boolean startChanged = body.startDateTime() != null && !body.startDateTime().equals(event.getStartDateTime());
+        LocalDateTime oldStartDateTime = event.getStartDateTime();
+        boolean startChanged = body.startDateTime() != null && !body.startDateTime().equals(oldStartDateTime);
         if (startChanged) {
             event.setStartDateTime(body.startDateTime());
         }
@@ -194,6 +218,20 @@ public class EventService {
                 throw new BadRequestException("La data di fine non può precedere quella di inizio");
             }
             event.setEndDateTime(body.endDateTime());
+        } else if (event.getType() == EventType.MULTI_DAY_TRIP && startChanged) {
+            long deltaDays = ChronoUnit.DAYS.between(oldStartDateTime.toLocalDate(), event.getStartDateTime().toLocalDate());
+            if (deltaDays != 0) {
+                for (Event day : event.getChildren()) {
+                    day.setStartDateTime(day.getStartDateTime().plusDays(deltaDays));
+                    day.setEndDateTime(day.getEndDateTime().plusDays(deltaDays));
+                }
+                eventRepository.saveAll(event.getChildren());
+            }
+            LocalDateTime newTripEnd = event.getChildren().stream()
+                    .map(Event::getEndDateTime)
+                    .max(LocalDateTime::compareTo)
+                    .orElse(event.getStartDateTime());
+            event.setEndDateTime(newTripEnd);
         }
 
         eventRepository.save(event);
@@ -215,6 +253,7 @@ public class EventService {
         if (day.getParentEvent() == null || !day.getParentEvent().getId().equals(tripId)) {
             throw new NotFoundException("Giorno non trovato per questo viaggio");
         }
+
 
         if (body.title() != null) day.setTitle(body.title());
         if (body.description() != null) day.setDescription(body.description());
@@ -248,6 +287,9 @@ public class EventService {
 
         boolean startChanged = body.startDateTime() != null && !body.startDateTime().equals(day.getStartDateTime());
         if (startChanged) {
+            if (!body.startDateTime().toLocalDate().equals(day.getStartDateTime().toLocalDate())) {
+                throw new BadRequestException("Non puoi cambiare la data di un giorno già inserito, solo l'orario");
+            }
             day.setStartDateTime(body.startDateTime());
         }
 
@@ -360,7 +402,7 @@ public class EventService {
     }
 
 
-    public Page<EventSummaryDTO> searchEvents(User currentUser, EventSearchFilterDTO filters, int page, int size) {
+    public Page<EventSummaryDTO> searchEvents(User currentUser, EventSearchFilterDTO filters, Double viewerLat, Double viewerLng, int page, int size) {
         if (size <= 0 || size > 50) size = 20;
         if (page < 0) page = 0;
 
@@ -396,7 +438,8 @@ public class EventService {
         }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("startDateTime"));
-        return eventRepository.findAll(Specification.allOf(specs), pageable).map(e -> toSummaryDTO(currentUser, e));
+        return eventRepository.findAll(Specification.allOf(specs), pageable)
+                .map(e -> toSummaryDTO(currentUser, e, viewerLat, viewerLng));
     }
 
 
@@ -440,7 +483,7 @@ public class EventService {
         return participationRepository.countByEventIdAndStatus(eventId, ParticipationStatus.ACCEPTED);
     }
 
-    public Page<EventSummaryDTO> getOrganizedEvents(User currentUser, boolean history, int page, int size) {
+    public Page<EventSummaryDTO> getOrganizedEvents(User currentUser, boolean history, Double viewerLat, Double viewerLng, int page, int size) {
         Pageable base = buildPageable(page, size);
 
         List<Specification<Event>> specs = new ArrayList<>();
@@ -452,10 +495,10 @@ public class EventService {
         Pageable pageable = PageRequest.of(base.getPageNumber(), base.getPageSize(), sort);
 
         return eventRepository.findAll(Specification.allOf(specs), pageable)
-                .map(e -> toSummaryDTO(currentUser, e));
+                .map(e -> toSummaryDTO(currentUser, e, viewerLat, viewerLng));
     }
 
-    public Page<EventSummaryDTO> getParticipatingEvents(User currentUser, boolean history, int page, int size) {
+    public Page<EventSummaryDTO> getParticipatingEvents(User currentUser, boolean history, Double viewerLat, Double viewerLng, int page, int size) {
         Pageable pageable = buildPageable(page, size);
         List<ParticipationStatus> statuses = List.of(ParticipationStatus.PENDING, ParticipationStatus.ACCEPTED);
 
@@ -463,10 +506,10 @@ public class EventService {
                 ? eventRepository.findHistoryParticipatingEvents(currentUser.getId(), statuses, EventStatus.ACTIVE, LocalDateTime.now(), pageable)
                 : eventRepository.findCurrentParticipatingEvents(currentUser.getId(), statuses, EventStatus.ACTIVE, LocalDateTime.now(), pageable);
 
-        return events.map(e -> toSummaryDTO(currentUser, e));
+        return events.map(e -> toSummaryDTO(currentUser, e, viewerLat, viewerLng));
     }
 
-    public Page<EventSummaryDTO> getHistoryEvents(User currentUser, int page, int size) {
+    public Page<EventSummaryDTO> getHistoryEvents(User currentUser, Double viewerLat, Double viewerLng, int page, int size) {
         if (size <= 0 || size > 50) size = 20;
         if (page < 0) page = 0;
         Pageable pageable = PageRequest.of(page, size, Sort.by("startDateTime").descending());
@@ -477,7 +520,7 @@ public class EventService {
         specs.add(EventSpecifications.isHistory(LocalDateTime.now()));
 
         return eventRepository.findAll(Specification.allOf(specs), pageable)
-                .map(e -> toSummaryDTO(currentUser, e));
+                .map(e -> toSummaryDTO(currentUser, e, viewerLat, viewerLng));
     }
 
     private Pageable buildPageable(int page, int size) {
@@ -528,27 +571,117 @@ public class EventService {
     @Transactional
     public void handleRouteUpdated(UUID routeId, double newDurationSeconds, double oldDurationSeconds) {
         double deltaSeconds = newDurationSeconds - oldDurationSeconds;
-        if (deltaSeconds == 0) return;
 
         List<Event> affected = eventRepository.findByRouteId(routeId);
         for (Event event : affected) {
-            if (event.getType() != EventType.STANDARD) continue;
+            if (event.getType() == EventType.STANDARD && deltaSeconds != 0) {
+                event.setEndDateTime(event.getEndDateTime().plusSeconds((long) deltaSeconds));
+                eventRepository.save(event);
 
-            event.setEndDateTime(event.getEndDateTime().plusSeconds((long) deltaSeconds));
-            eventRepository.save(event);
-            notifyParticipantsOfUpdate(event.getParentEvent() != null ? event.getParentEvent() : event);
-
-            if (event.getParentEvent() != null) {
-                Event trip = event.getParentEvent();
-                LocalDateTime newTripEnd = trip.getChildren().stream()
-                        .map(c -> c.getId().equals(event.getId()) ? event.getEndDateTime() : c.getEndDateTime())
-                        .max(LocalDateTime::compareTo)
-                        .orElse(trip.getStartDateTime());
-                trip.setEndDateTime(newTripEnd);
-                eventRepository.save(trip);
+                if (event.getParentEvent() != null) {
+                    Event trip = event.getParentEvent();
+                    LocalDateTime newTripEnd = trip.getChildren().stream()
+                            .map(c -> c.getId().equals(event.getId()) ? event.getEndDateTime() : c.getEndDateTime())
+                            .max(LocalDateTime::compareTo)
+                            .orElse(trip.getStartDateTime());
+                    trip.setEndDateTime(newTripEnd);
+                    eventRepository.save(trip);
+                }
             }
+
+            notifyParticipantsOfUpdate(event.getParentEvent() != null ? event.getParentEvent() : event);
         }
     }
+
+
+    @Transactional
+    public void deleteDay(User currentUser, UUID tripId, UUID dayId) {
+        Event trip = eventRepository.findById(tripId)
+                .orElseThrow(() -> new NotFoundException("Viaggio non trovato"));
+        if (!trip.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Non sei l'organizzatore di questo viaggio");
+        }
+
+        Event dayToDelete = eventRepository.findById(dayId)
+                .orElseThrow(() -> new NotFoundException("Giorno non trovato"));
+        if (dayToDelete.getParentEvent() == null || !dayToDelete.getParentEvent().getId().equals(tripId)) {
+            throw new NotFoundException("Giorno non trovato per questo viaggio");
+        }
+
+        LocalDateTime deletedDayStart = dayToDelete.getStartDateTime();
+
+        List<Event> laterDays = trip.getChildren().stream()
+                .filter(d -> !d.getId().equals(dayId) && d.getStartDateTime().isAfter(deletedDayStart))
+                .toList();
+
+        eventRepository.delete(dayToDelete);
+
+        for (Event day : laterDays) {
+            day.setStartDateTime(day.getStartDateTime().minusDays(1));
+            day.setEndDateTime(day.getEndDateTime().minusDays(1));
+        }
+        eventRepository.saveAll(laterDays);
+
+        List<Event> remainingDays = trip.getChildren().stream()
+                .filter(d -> !d.getId().equals(dayId))
+                .toList();
+
+        LocalDateTime newTripEnd = remainingDays.stream()
+                .map(Event::getEndDateTime)
+                .max(LocalDateTime::compareTo)
+                .orElse(trip.getStartDateTime());
+        trip.setEndDateTime(newTripEnd);
+        eventRepository.save(trip);
+
+        notifyParticipantsOfUpdate(trip);
+        log.info("Giorno {} eliminato dal viaggio {}", dayId, tripId);
+    }
+
+
+    @Transactional
+    public EventDetailDTO reorderDays(User currentUser, UUID tripId, ReorderEventDaysRequestDTO body) {
+        Event trip = eventRepository.findById(tripId)
+                .orElseThrow(() -> new NotFoundException("Viaggio non trovato"));
+        if (!trip.getOrganizer().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Non sei l'organizzatore di questo viaggio");
+        }
+
+        Map<UUID, Event> byId = trip.getChildren().stream()
+                .collect(Collectors.toMap(Event::getId, d -> d));
+
+        if (body.dayIds().size() != byId.size() || !byId.keySet().containsAll(body.dayIds())) {
+            throw new BadRequestException("L'elenco fornito non corrisponde ai giorni del viaggio");
+        }
+
+        LocalDate tripStartDate = trip.getStartDateTime().toLocalDate();
+
+        for (int i = 0; i < body.dayIds().size(); i++) {
+            Event day = byId.get(body.dayIds().get(i));
+            LocalDate currentDate = day.getStartDateTime().toLocalDate();
+            LocalDate newDate = tripStartDate.plusDays(i);
+            long deltaDays = ChronoUnit.DAYS.between(currentDate, newDate);
+
+            if (deltaDays != 0) {
+                day.setStartDateTime(day.getStartDateTime().plusDays(deltaDays));
+                day.setEndDateTime(day.getEndDateTime().plusDays(deltaDays));
+            }
+        }
+
+        eventRepository.saveAll(byId.values());
+
+        LocalDateTime newTripEnd = byId.values().stream()
+                .map(Event::getEndDateTime)
+                .max(LocalDateTime::compareTo)
+                .orElse(trip.getStartDateTime());
+        trip.setEndDateTime(newTripEnd);
+        eventRepository.save(trip);
+
+        notifyParticipantsOfUpdate(trip);
+        log.info("Riordinati i giorni del viaggio {}", tripId);
+
+        return toDetailDTO(currentUser, trip, countAccepted(tripId), false);
+    }
+
 
     @Transactional
     public EventDetailDTO updateCoverPhoto(User currentUser, UUID eventId, MultipartFile image) {
@@ -661,16 +794,39 @@ public class EventService {
     }
 
     private EventSummaryDTO toSummaryDTO(User currentUser, Event event) {
+        return toSummaryDTO(currentUser, event, null, null);
+    }
+
+    private EventSummaryDTO toSummaryDTO(User currentUser, Event event, Double viewerLat, Double viewerLng) {
         boolean isOrganizer = event.getOrganizer().getId().equals(currentUser.getId());
         boolean locked = event.getVisibility() != EventVisibility.PUBLIC
                 && !eventAccessChecker.canSeeDetail(currentUser, event);
+        Integer tripDurationDays = event.getType() == EventType.MULTI_DAY_TRIP
+                ? event.getChildren().size()
+                : null;
+
+        DistanceBucket lockedDistanceBucket = null;
+        if (locked && viewerLat != null && viewerLng != null
+                && event.getMeetingPointLat() != null && event.getMeetingPointLng() != null) {
+            lockedDistanceBucket = computeDistanceBucket(viewerLat, viewerLng,
+                    event.getMeetingPointLat(), event.getMeetingPointLng());
+        }
+
         return new EventSummaryDTO(
                 event.getId(), event.getTitle(), event.getOrganizer().getUsername(),
                 event.getStartDateTime(), event.getMaxParticipants(),
                 countAccepted(event.getId()), event.getVisibility(), event.getStatus(), locked,
                 myStatus(currentUser, event.getId()), isOrganizer, locked ? null : event.getMeetingPointLat(),
-                locked ? null : event.getMeetingPointLng(), event.getType()
+                locked ? null : event.getMeetingPointLng(), event.getType(), tripDurationDays, lockedDistanceBucket
         );
+    }
+
+    private DistanceBucket computeDistanceBucket(double lat1, double lng1, double lat2, double lng2) {
+        double km = GeoUtils.haversineKm(lat1, lng1, lat2, lng2);
+        if (km < 5) return DistanceBucket.UNDER_5KM;
+        if (km < 20) return DistanceBucket.KM_5_20;
+        if (km < 50) return DistanceBucket.KM_20_50;
+        return DistanceBucket.OVER_50KM;
     }
 
     private EventDetailDTO toLockedDetailDTO(User currentUser, Event event) {

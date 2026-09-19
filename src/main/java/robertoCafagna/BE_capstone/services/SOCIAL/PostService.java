@@ -16,6 +16,7 @@ import robertoCafagna.BE_capstone.Interface.PostCommentCount;
 import robertoCafagna.BE_capstone.Interface.PostLikeCount;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.entities.*;
+import robertoCafagna.BE_capstone.enums.EventType;
 import robertoCafagna.BE_capstone.enums.FeedType;
 import robertoCafagna.BE_capstone.enums.MediaType;
 import robertoCafagna.BE_capstone.enums.WidgetType;
@@ -325,13 +326,16 @@ public class PostService {
 
     private EventSummaryDTO toEventSummary(User currentUser, Event event) {
         boolean locked = !eventAccessChecker.canSeeDetail(currentUser, event);
+        Integer tripDurationDays = event.getType() == EventType.MULTI_DAY_TRIP
+                ? event.getChildren().size()
+                : null;
         return new EventSummaryDTO(
                 event.getId(), event.getTitle(), event.getOrganizer().getUsername(),
                 event.getStartDateTime(), event.getMaxParticipants(), 0,
                 event.getVisibility(), event.getStatus(), locked, null, false,
                 locked ? null : event.getMeetingPointLat(),
                 locked ? null : event.getMeetingPointLng(),
-                event.getType()
+                event.getType(), tripDurationDays, null
         );
     }
 

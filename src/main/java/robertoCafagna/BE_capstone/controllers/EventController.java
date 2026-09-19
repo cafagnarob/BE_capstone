@@ -49,11 +49,13 @@ public class EventController {
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
             @RequestParam(required = false) Double radiusKm,
+            @RequestParam(required = false) Double viewerLat,
+            @RequestParam(required = false) Double viewerLng,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         EventSearchFilterDTO filters = new EventSearchFilterDTO(title, dateFrom, dateTo, lat, lng, radiusKm);
-        return ResponseEntity.ok(eventService.searchEvents(currentUser, filters, page, size));
+        return ResponseEntity.ok(eventService.searchEvents(currentUser, filters, viewerLat, viewerLng, page, size));
     }
 
     @GetMapping("/{eventId}")
@@ -72,6 +74,27 @@ public class EventController {
     ) {
         return ResponseEntity.ok(eventService.updateEvent(currentUser, eventId, body));
     }
+
+
+    @DeleteMapping("/{tripId}/days/{dayId}")
+    public ResponseEntity<Void> deleteDay(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID tripId,
+            @PathVariable UUID dayId
+    ) {
+        eventService.deleteDay(currentUser, tripId, dayId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{tripId}/days/reorder")
+    public ResponseEntity<EventDetailDTO> reorderDays(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable UUID tripId,
+            @RequestBody @Valid ReorderEventDaysRequestDTO body
+    ) {
+        return ResponseEntity.ok(eventService.reorderDays(currentUser, tripId, body));
+    }
+
 
     @PatchMapping("/{eventId}/status")
     public ResponseEntity<Void> changeStatus(
@@ -106,20 +129,24 @@ public class EventController {
     public ResponseEntity<Page<EventSummaryDTO>> getOrganizedEvents(
             @AuthenticationPrincipal User currentUser,
             @RequestParam(defaultValue = "false") boolean history,
+            @RequestParam(required = false) Double viewerLat,
+            @RequestParam(required = false) Double viewerLng,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(eventService.getOrganizedEvents(currentUser, history, page, size));
+        return ResponseEntity.ok(eventService.getOrganizedEvents(currentUser, history, viewerLat, viewerLng, page, size));
     }
 
     @GetMapping("/participating")
     public ResponseEntity<Page<EventSummaryDTO>> getParticipatingEvents(
             @AuthenticationPrincipal User currentUser,
             @RequestParam(defaultValue = "false") boolean history,
+            @RequestParam(required = false) Double viewerLat,
+            @RequestParam(required = false) Double viewerLng,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(eventService.getParticipatingEvents(currentUser, history, page, size));
+        return ResponseEntity.ok(eventService.getParticipatingEvents(currentUser, history, viewerLat, viewerLng, page, size));
     }
 
     @PatchMapping(value = "/{eventId}/cover-photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -134,10 +161,12 @@ public class EventController {
     @GetMapping("/history")
     public ResponseEntity<Page<EventSummaryDTO>> getHistoryEvents(
             @AuthenticationPrincipal User currentUser,
+            @RequestParam(required = false) Double viewerLat,
+            @RequestParam(required = false) Double viewerLng,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(eventService.getHistoryEvents(currentUser, page, size));
+        return ResponseEntity.ok(eventService.getHistoryEvents(currentUser, viewerLat, viewerLng, page, size));
     }
 
     @PostMapping("/{tripId}/days")
