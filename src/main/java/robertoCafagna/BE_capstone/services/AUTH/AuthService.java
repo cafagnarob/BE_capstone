@@ -73,10 +73,11 @@ public class AuthService {
         );
 
         User user = (User) authentication.getPrincipal();
+        if (user.getDeletedAt() != null) {
+            throw new BadRequestException("Questo account è stato eliminato");
+        }
         if (!user.isActive()) {
-            throw new BadRequestException(
-                    "Account non attivo"
-            );
+            throw new BadRequestException("Account non attivo");
         }
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);

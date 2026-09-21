@@ -5,8 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import robertoCafagna.BE_capstone.DTO.GARAGE.CatalogSuggestionRequestDTO;
+import robertoCafagna.BE_capstone.entities.CatalogSuggestion;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
+import robertoCafagna.BE_capstone.repositories.GARAGE.CatalogSuggestionRepository;
 import robertoCafagna.BE_capstone.services.MailService;
 
 import java.time.LocalDateTime;
@@ -22,12 +24,20 @@ public class CatalogSuggestionService {
     private static final int MAX_SUGGESTIONS_PER_USER_PER_DAY = 5;
 
     private final MailService mailService;
+    private final CatalogSuggestionRepository catalogSuggestionRepository;
     private final Map<UUID, DailyCounter> countersByUser = new ConcurrentHashMap<>();
     @Value("${app.mail.admin}")
     private String adminAddress;
 
     public void submit(User currentUser, CatalogSuggestionRequestDTO body) {
         checkAndIncrementLimit(currentUser.getId());
+
+        CatalogSuggestion suggestion = new CatalogSuggestion(
+                currentUser, body.brandName(), body.modelName(), body.engineCc(),
+                body.category(), body.yearStart(), body.yearEnd(),
+                body.horsePower(), body.weightKg(), body.note()
+        );
+        catalogSuggestionRepository.save(suggestion);
 
         mailService.sendCatalogSuggestionEmail(
                 adminAddress, currentUser.getUsername(), currentUser.getEmail(),

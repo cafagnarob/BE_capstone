@@ -3,11 +3,10 @@ package robertoCafagna.BE_capstone.specifications;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
+import robertoCafagna.BE_capstone.entities.AccessCodeRequest;
 import robertoCafagna.BE_capstone.entities.Event;
 import robertoCafagna.BE_capstone.entities.Participation;
-import robertoCafagna.BE_capstone.enums.EventStatus;
-import robertoCafagna.BE_capstone.enums.EventVisibility;
-import robertoCafagna.BE_capstone.enums.ParticipationStatus;
+import robertoCafagna.BE_capstone.enums.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -82,6 +81,21 @@ public class EventSpecifications {
                     cb.equal(root.get("organizer").get("id"), userId),
                     root.get("id").in(subquery)
             );
+        };
+    }
+
+    public static Specification<Event> hasType(EventType type) {
+        return (root, query, cb) -> cb.equal(root.get("type"), type);
+    }
+
+    public static Specification<Event> hasPendingAccessRequests() {
+        return (root, query, cb) -> {
+            Subquery<UUID> subquery = query.subquery(UUID.class);
+            Root<AccessCodeRequest> reqRoot = subquery.from(AccessCodeRequest.class);
+            subquery.select(reqRoot.get("event").get("id"))
+                    .where(cb.equal(reqRoot.get("status"), AccessRequestStatus.PENDING));
+
+            return root.get("id").in(subquery);
         };
     }
 }

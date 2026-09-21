@@ -6,6 +6,7 @@ import robertoCafagna.BE_capstone.entities.Event;
 import robertoCafagna.BE_capstone.entities.User;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
+import robertoCafagna.BE_capstone.enums.Role;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventInviteRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 
@@ -19,6 +20,8 @@ public class EventAccessChecker {
 
     public boolean canSeeDetail(User currentUser, Event event) {
         if (event.getVisibility() == EventVisibility.PUBLIC) return true;
+
+        if (currentUser.getRole() == Role.ADMIN) return true;
 
         if (event.getOrganizer().getId().equals(currentUser.getId())) return true;
 

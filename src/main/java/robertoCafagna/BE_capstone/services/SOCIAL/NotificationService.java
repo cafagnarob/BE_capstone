@@ -177,4 +177,38 @@ public class NotificationService {
                 n.getActor() != null ? n.getActor().getUsername() : null,
                 n.getActor() != null ? n.getActor().getProfilePicture() : null);
     }
+
+
+    @Transactional
+    public void notifyBroadcast(List<User> recipients, String message) {
+        List<Notification> notifications = recipients.stream()
+                .map(user -> new Notification(user, null, NotificationType.SYSTEM, message, null, null))
+                .toList();
+        notificationRepository.saveAll(notifications);
+        log.info("Notifica broadcast SYSTEM inviata a {} utenti", notifications.size());
+    }
+
+
+    @Transactional
+    public void notifyEventCancelledByAdmin(User recipient, Event event, String reason) {
+        String suffix = reason != null && !reason.isBlank() ? " Motivo: " + reason : "";
+        create(recipient, null, NotificationType.EVENT_UPDATED,
+                "L'evento \"" + event.getTitle() + "\" è stato annullato dall'amministrazione." + suffix,
+                event.getId(), ReferenceType.EVENT);
+    }
+
+    @Transactional
+    public void notifyContentRemovedByAdmin(User recipient, String contentType, String reason) {
+        String suffix = reason != null && !reason.isBlank() ? " Motivo: " + reason : "";
+        create(recipient, null, NotificationType.SYSTEM,
+                "Un tuo " + contentType + " è stato rimosso da un amministratore." + suffix,
+                null, null);
+    }
+
+    @Transactional
+    public void notifyEventCancelled(User recipient, Event event) {
+        create(recipient, event.getOrganizer(), NotificationType.EVENT_UPDATED,
+                "L'evento \"" + event.getTitle() + "\" è stato annullato dall'organizzatore",
+                event.getId(), ReferenceType.EVENT);
+    }
 }

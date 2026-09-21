@@ -16,12 +16,14 @@ import robertoCafagna.BE_capstone.entities.CommentLike;
 import robertoCafagna.BE_capstone.entities.Post;
 import robertoCafagna.BE_capstone.entities.PostComment;
 import robertoCafagna.BE_capstone.entities.User;
+import robertoCafagna.BE_capstone.enums.ReportTargetType;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.CommentLikeRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.PostCommentRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.PostRepository;
+import robertoCafagna.BE_capstone.repositories.SOCIAL.ReportRepository;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,6 +37,7 @@ public class PostCommentService {
     private final PostCommentRepository postCommentRepository;
     private final CommentLikeRepository commentLikeRepository;
     private final NotificationService notificationService;
+    private final ReportRepository reportRepository;
 
     @Transactional
     public CommentResponseDTO addComment(User currentUser, UUID postId, CreateCommentRequestDTO body) {
@@ -133,6 +136,23 @@ public class PostCommentService {
             throw new ForbiddenException("Non puoi eliminare questo commento");
         }
 
+        deleteCommentInternal(comment);
+        log.info("Commento {} eliminato (utente {})", commentId, currentUser.getId());
+    }
+
+    @Transactional
+    public void adminDeleteComment(UUID commentId, String reason) {
+        PostComment comment = postCommentRepository.findById(commentId)
+                .orElseThrow(() -> new NotFoundException("Commento non trovato"));
+        User author = comment.getUser();
+        deleteCommentInternal(comment);
+        reportRepository.deleteByTargetTypeAndTargetId(ReportTargetType.COMMENT, commentId);
+        notificationService.notifyContentRemovedByAdmin(author, "commento", reason);
+        log.info("Admin ha eliminato il commento {} (motivo: {})", commentId, reason);
+    }
+
+    private void deleteCommentInternal(PostComment comment) {
+        UUID commentId = comment.getId();
         if (comment.getParentComment() == null) {
             List<PostComment> replies = postCommentRepository.findByParentCommentIdOrderByCreatedAtAsc(commentId);
             if (!replies.isEmpty()) {
@@ -141,10 +161,8 @@ public class PostCommentService {
                 postCommentRepository.deleteAll(replies);
             }
         }
-
         commentLikeRepository.deleteByCommentId(commentId);
         postCommentRepository.delete(comment);
-        log.info("Commento {} eliminato (utente {})", commentId, currentUser.getId());
     }
 
     private Page<CommentResponseDTO> toDTOPage(User currentUser, Page<PostComment> comments) {

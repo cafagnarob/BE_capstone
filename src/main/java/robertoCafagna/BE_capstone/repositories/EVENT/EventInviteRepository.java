@@ -16,4 +16,6 @@ public interface EventInviteRepository extends JpaRepository<EventInvite, UUID> 
     List<EventInvite> findByInvitedUserIdAndStatus(UUID invitedUserId, InviteStatus status);
 
     List<EventInvite> findByEventId(UUID eventId);
+
+    List<EventInvite> findByInvitedUserId(UUID invitedUserId);
 }

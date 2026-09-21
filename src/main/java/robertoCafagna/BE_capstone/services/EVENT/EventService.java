@@ -11,6 +11,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import robertoCafagna.BE_capstone.DTO.ADMIN.AdminEventSearchFilterDTO;
+import robertoCafagna.BE_capstone.DTO.ADMIN.AdminEventSummaryDTO;
 import robertoCafagna.BE_capstone.DTO.EVENT.*;
 import robertoCafagna.BE_capstone.DTO.RIDE.RouteResponseDTO;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
@@ -25,6 +27,7 @@ import robertoCafagna.BE_capstone.repositories.EVENT.EventInviteRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.EventRepository;
 import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
+import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
 import robertoCafagna.BE_capstone.services.CloudinaryService;
 import robertoCafagna.BE_capstone.services.SOCIAL.NotificationService;
 import robertoCafagna.BE_capstone.specifications.EventSpecifications;
@@ -56,6 +59,16 @@ public class EventService {
     private final AccessCodeRequestRepository accessCodeRequestRepository;
     private final EventInviteRepository eventInviteRepository;
     private final CloudinaryService cloudinaryService;
+    private final UserRepository userRepository;
+
+    private void validateStatusTransition(Event event, EventStatus newStatus) {
+        if (event.getStatus() == EventStatus.FINISHED) {
+            throw new BadRequestException("Non è possibile modificare lo stato di un evento già concluso");
+        }
+        if (event.getStatus() == EventStatus.CANCELLED && newStatus != EventStatus.CANCELLED) {
+            throw new BadRequestException("Non è possibile riattivare un evento cancellato");
+        }
+    }
 
     @Transactional
     public EventDetailDTO createEvent(User organizer, CreateEventRequestDTO body) {
@@ -318,30 +331,138 @@ public class EventService {
     }
 
 
-    private void notifyParticipantsOfUpdate(Event event) {
-        List<Participation> toNotify = new ArrayList<>();
-        toNotify.addAll(participationRepository.findByEventIdAndStatus(event.getId(), ParticipationStatus.ACCEPTED));
-        toNotify.addAll(participationRepository.findByEventIdAndStatus(event.getId(), ParticipationStatus.PENDING));
+    private List<User> getParticipantsToNotify(Event event) {
+        List<Participation> participations = new ArrayList<>();
+        participations.addAll(participationRepository.findByEventIdAndStatus(event.getId(), ParticipationStatus.ACCEPTED));
+        participations.addAll(participationRepository.findByEventIdAndStatus(event.getId(), ParticipationStatus.PENDING));
+        return participations.stream().map(Participation::getUser).toList();
+    }
 
-        for (Participation p : toNotify) {
-            notificationService.notifyEventUpdated(p.getUser(), event);
+    private void notifyParticipantsOfUpdate(Event event) {
+        for (User user : getParticipantsToNotify(event)) {
+            notificationService.notifyEventUpdated(user, event);
         }
+    }
+
+    private void notifyParticipantsOfCancellation(Event event) {
+        for (User user : getParticipantsToNotify(event)) {
+            notificationService.notifyEventCancelled(user, event);
+        }
+    }
+
+
+    public Page<AdminEventSummaryDTO> adminSearchEvents(AdminEventSearchFilterDTO filters, int page, int size) {
+        if (size <= 0 || size > 50) size = 20;
+        if (page < 0) page = 0;
+
+        List<Specification<Event>> specs = new ArrayList<>();
+        specs.add(EventSpecifications.hasNoParent());
+
+        if (filters.title() != null && !filters.title().isBlank()) {
+            specs.add(EventSpecifications.titleContains(filters.title().trim()));
+        }
+        if (filters.status() != null) {
+            specs.add(EventSpecifications.hasStatus(filters.status()));
+        }
+        if (filters.visibility() != null) {
+            specs.add(EventSpecifications.visibilityIn(List.of(filters.visibility())));
+        }
+        if (filters.type() != null) {
+            specs.add(EventSpecifications.hasType(filters.type()));
+        }
+        if (filters.organizerUsername() != null && !filters.organizerUsername().isBlank()) {
+            User organizer = userRepository.findByUsername(filters.organizerUsername().trim())
+                    .orElseThrow(() -> new NotFoundException("Utente \"" + filters.organizerUsername() + "\" non trovato"));
+            specs.add(EventSpecifications.hasOrganizer(organizer.getId()));
+        }
+        if (filters.dateFrom() != null) {
+            specs.add(EventSpecifications.startDateAfter(filters.dateFrom()));
+        }
+        if (filters.dateTo() != null) {
+            specs.add(EventSpecifications.startDateBefore(filters.dateTo()));
+        }
+        if (filters.lat() != null && filters.lng() != null && filters.radiusKm() != null) {
+            double cosLat = Math.max(Math.cos(Math.toRadians(filters.lat())), 0.01);
+            double deltaLat = filters.radiusKm() / 111.0;
+            double deltaLng = filters.radiusKm() / (111.0 * cosLat);
+            specs.add(EventSpecifications.withinBoundingBox(
+                    filters.lat() - deltaLat, filters.lat() + deltaLat,
+                    filters.lng() - deltaLng, filters.lng() + deltaLng
+            ));
+        }
+
+        if (filters.onlyPendingAccessRequests()) {
+            specs.add(EventSpecifications.visibilityIn(List.of(EventVisibility.PRIVATE_CODE)));
+            specs.add(EventSpecifications.hasPendingAccessRequests());
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("startDateTime").descending());
+        return eventRepository.findAll(Specification.allOf(specs), pageable)
+                .map(this::toAdminSummaryDTO);
+    }
+
+    private AdminEventSummaryDTO toAdminSummaryDTO(Event event) {
+        return new AdminEventSummaryDTO(
+                event.getId(), event.getTitle(), event.getOrganizer().getUsername(),
+                event.getStartDateTime(), event.getEndDateTime(), event.getStatus(),
+                event.getVisibility(), event.getType(), countAccepted(event.getId()), event.getMaxParticipants()
+        );
     }
 
     @Transactional
     public void changeStatus(User currentUser, UUID eventId, EventStatus newStatus) {
         Event event = getOwnedEvent(currentUser, eventId);
-
-        if (event.getStatus() == EventStatus.FINISHED) {
-            throw new BadRequestException("Non è possibile modificare lo stato di un evento già concluso");
-        }
-        if (event.getStatus() == EventStatus.CANCELLED && newStatus != EventStatus.CANCELLED) {
-            throw new BadRequestException("Non è possibile riattivare un evento cancellato");
-        }
-
+        validateStatusTransition(event, newStatus);
         event.setStatus(newStatus);
         eventRepository.save(event);
+
+        if (newStatus == EventStatus.CANCELLED) {
+            notifyParticipantsOfCancellation(event);
+        }
+
         log.info("Evento {} passato allo stato {}", eventId, newStatus);
+    }
+
+    @Transactional
+    public void cancelAllOrganizedEvents(User organizer) {
+        List<Event> activeEvents = eventRepository.findByOrganizerId(organizer.getId()).stream()
+                .filter(e -> e.getParentEvent() == null && e.getStatus() == EventStatus.ACTIVE)
+                .toList();
+
+        for (Event event : activeEvents) {
+            event.setStatus(EventStatus.CANCELLED);
+            eventRepository.save(event);
+            notifyParticipantsOfCancellation(event);
+        }
+        log.info("Annullati {} eventi attivi per eliminazione account di {}", activeEvents.size(), organizer.getId());
+    }
+
+
+    @Transactional
+    public void adminCancelEvent(UUID eventId, String reason) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Evento non trovato"));
+
+        validateStatusTransition(event, EventStatus.CANCELLED);
+
+        event.setStatus(EventStatus.CANCELLED);
+        eventRepository.save(event);
+
+        notifyAdminCancellation(event, reason);
+        log.info("Admin ha annullato l'evento {} (motivo: {})", eventId, reason);
+    }
+
+    private void notifyAdminCancellation(Event event, String reason) {
+        List<User> recipients = new ArrayList<>();
+        recipients.add(event.getOrganizer());
+        participationRepository.findByEventIdAndStatus(event.getId(), ParticipationStatus.ACCEPTED)
+                .forEach(p -> recipients.add(p.getUser()));
+        participationRepository.findByEventIdAndStatus(event.getId(), ParticipationStatus.PENDING)
+                .forEach(p -> recipients.add(p.getUser()));
+
+        for (User recipient : recipients) {
+            notificationService.notifyEventCancelledByAdmin(recipient, event, reason);
+        }
     }
 
 

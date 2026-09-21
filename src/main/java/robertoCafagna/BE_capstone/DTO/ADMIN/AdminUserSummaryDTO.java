@@ -8,5 +8,6 @@ public record AdminUserSummaryDTO(UUID id,
                                   String email,
                                   boolean active,
                                   LocalDateTime createdAt,
-                                  LocalDateTime lastLogin) {
+                                  LocalDateTime lastLogin,
+                                  boolean deleted) {
 }

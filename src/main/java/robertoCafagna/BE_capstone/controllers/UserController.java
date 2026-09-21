@@ -91,6 +91,16 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteAccount(
+            @AuthenticationPrincipal User currentUser,
+            @RequestBody @Valid DeleteAccountRequestDTO body
+    ) {
+        userService.deleteAccount(currentUser, body.currentPassword());
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/me/vehicle/{vehicleId}")
     public ResponseEntity<MyProfileResponseDTO> selectVehicle(
             @AuthenticationPrincipal User currentUser,

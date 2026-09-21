@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import robertoCafagna.BE_capstone.entities.Post;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -45,4 +47,21 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
 
     Page<Post> findByUserIdAndVehicleIdOrderByCreatedAtDesc(UUID userId, UUID vehicleId, Pageable pageable);
 
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Post p SET p.vehicle = null WHERE p.vehicle.id IN :vehicleIds")
+    void clearVehicleReferences(@Param("vehicleIds") List<UUID> vehicleIds);
+
+
+    @Query("""
+                SELECT p FROM Post p
+                WHERE p.user.id <> :userId
+                  AND p.user.id NOT IN (
+                    SELECT f.followedUser.id FROM FollowingRelationship f
+                    WHERE f.follower.id = :userId
+                  )
+                  AND p.createdAt >= :since
+                ORDER BY p.createdAt DESC
+            """)
+    List<Post> findExploreCandidates(@Param("userId") UUID userId, @Param("since") LocalDateTime since, Pageable pageable);
 }

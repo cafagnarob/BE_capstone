@@ -23,8 +23,17 @@ import robertoCafagna.BE_capstone.entities.UserProfile;
 import robertoCafagna.BE_capstone.entities.Vehicle;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
+import robertoCafagna.BE_capstone.repositories.EVENT.AccessCodeRequestRepository;
+import robertoCafagna.BE_capstone.repositories.EVENT.EventInviteRepository;
+import robertoCafagna.BE_capstone.repositories.EVENT.ParticipationRepository;
 import robertoCafagna.BE_capstone.repositories.GARAGE.VehicleRepository;
+import robertoCafagna.BE_capstone.repositories.RIDE.RideRepository;
+import robertoCafagna.BE_capstone.repositories.SOCIAL.FollowingRelationshipRepository;
+import robertoCafagna.BE_capstone.repositories.SOCIAL.LikeRepository;
+import robertoCafagna.BE_capstone.repositories.SOCIAL.NotificationRepository;
+import robertoCafagna.BE_capstone.repositories.SOCIAL.PostRepository;
 import robertoCafagna.BE_capstone.repositories.USER.UserRepository;
+import robertoCafagna.BE_capstone.services.EVENT.EventService;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -64,6 +73,17 @@ public class UserService {
     private final CloudinaryService cloudinaryService;
     private final VehicleRepository vehicleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EventService eventService;
+    private final RideRepository rideRepository;
+    private final FollowingRelationshipRepository followingRelationshipRepository;
+    private final LikeRepository likeRepository;
+    private final ParticipationRepository participationRepository;
+    private final EventInviteRepository eventInviteRepository;
+    private final AccessCodeRequestRepository accessCodeRequestRepository;
+    private final PostRepository postRepository;
+    private final NotificationRepository notificationRepository;
+    private final MailService mailService;
+
 
     // --- lettura ---
     @Transactional(readOnly = true)
@@ -384,6 +404,118 @@ public class UserService {
 
     private UserSearchResultDTO toSearchResultDTO(User u) {
         return new UserSearchResultDTO(u.getId(), u.getUsername(), u.getName(), u.getSurname(), u.getProfilePicture());
+    }
+
+
+    @Transactional
+    public void deleteAccount(User currentUser, String currentPassword) {
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new BadRequestException("Password non corretta");
+        }
+
+        anonymizeAndDeleteUserData(user, null);
+        log.info("Account {} eliminato dall'utente stesso", user.getId());
+    }
+
+    @Transactional
+    public void adminDeleteAccount(UUID userId, String reason) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Utente non trovato"));
+
+        anonymizeAndDeleteUserData(user, reason);
+        log.info("Account {} eliminato da un amministratore (motivo: {})", userId, reason);
+    }
+
+    private void anonymizeAndDeleteUserData(User user, String adminReason) {
+        if (user.getDeletedAt() != null) {
+            throw new BadRequestException("Questo account è già stato eliminato");
+        }
+
+        UUID userId = user.getId();
+        String originalEmail = user.getEmail();
+        String originalUsername = user.getUsername();
+
+        // 1. Annulla gli eventi attivi organizzati da questo utente
+        eventService.cancelAllOrganizedEvents(user);
+
+        // 2. Sgancia il veicolo attivo PRIMA di cancellare i veicoli
+        user.setCurrentVehicle(null);
+        userRepository.saveAndFlush(user);
+
+        // 3. Giri GPS — cancellati e SUBITO eseguiti, prima di toccare i veicoli
+        rideRepository.deleteAll(rideRepository.findByUserIdOrderByCreatedAtDesc(userId, Pageable.unpaged()).getContent());
+        rideRepository.flush();
+
+        // 4. Veicoli — prima sgancia eventuali riferimenti da post propri, poi ripulisci Cloudinary, poi cancella
+        List<Vehicle> vehicles = vehicleRepository.findByUserId(userId);
+        if (!vehicles.isEmpty()) {
+            List<UUID> vehicleIds = vehicles.stream().map(Vehicle::getId).toList();
+            postRepository.clearVehicleReferences(vehicleIds);
+
+            for (Vehicle vehicle : vehicles) {
+                if (vehicle.getPhotoPublicId() != null) {
+                    try {
+                        cloudinaryService.deleteImage(vehicle.getPhotoPublicId());
+                    } catch (IOException e) {
+                        log.warn("Impossibile cancellare la foto del veicolo {} durante l'eliminazione account {}", vehicle.getId(), userId, e);
+                    }
+                }
+            }
+            vehicleRepository.deleteAll(vehicles);
+            vehicleRepository.flush();
+        }
+
+        // 5. Follow, like, partecipazioni, inviti, richieste di codice
+        followingRelationshipRepository.deleteAll(followingRelationshipRepository.findByFollowerId(userId, Pageable.unpaged()).getContent());
+        followingRelationshipRepository.deleteAll(followingRelationshipRepository.findByFollowedUserId(userId, Pageable.unpaged()).getContent());
+        likeRepository.deleteByUserId(userId);
+        participationRepository.deleteAll(participationRepository.findByUserId(userId));
+        eventInviteRepository.deleteAll(eventInviteRepository.findByInvitedUserId(userId));
+        accessCodeRequestRepository.deleteAll(accessCodeRequestRepository.findByRequesterId(userId));
+
+        // 6. Foto profilo su Cloudinary
+        if (user.getProfilePicturePublicId() != null) {
+            try {
+                cloudinaryService.deleteImage(user.getProfilePicturePublicId());
+            } catch (IOException e) {
+                log.warn("Impossibile cancellare la foto profilo durante l'eliminazione account {}", userId, e);
+            }
+        }
+
+        // 7. Svuota il profilo esteso
+        UserProfile profile = user.getProfile();
+        if (profile != null) {
+            profile.setDescription(null);
+            profile.setLocation(null);
+            profile.setLocationLat(null);
+            profile.setLocationLng(null);
+            profile.setBirthDate(null);
+        }
+
+        // 8. Cancella le notifiche ricevute
+        notificationRepository.deleteByUserId(userId);
+
+        // 9. Anonimizza i dati identificativi
+        user.setUsername("utente_eliminato_" + userId.toString().substring(0, 8));
+        user.setEmail(userId + "@deleted.flowrides.local");
+        user.setName(null);
+        user.setSurname(null);
+        user.setProfilePicture("default/pic");
+        user.setProfilePicturePublicId(null);
+        user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+        user.setActive(false);
+        user.setDeletedAt(LocalDateTime.now());
+        user.setTokensValidFrom(LocalDateTime.now());
+
+        userRepository.save(user);
+
+        // 10. Email all'utente, solo se eliminato da un admin — usa l'indirizzo ORIGINALE, salvato prima dell'anonimizzazione
+        if (adminReason != null) {
+            mailService.sendAccountDeletedByAdminEmail(originalEmail, originalUsername, adminReason);
+        }
     }
 
 

@@ -133,6 +133,10 @@ public class User implements UserDetails {
     @Setter
     private LocalDateTime tokensValidFrom;
 
+    @Column
+    @Setter
+    private LocalDateTime deletedAt;
+
 
     public User(String username, String email,
                 String password) {

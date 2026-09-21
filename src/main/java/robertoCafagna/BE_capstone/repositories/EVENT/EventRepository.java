@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import robertoCafagna.BE_capstone.entities.Event;
 import robertoCafagna.BE_capstone.enums.EventStatus;
+import robertoCafagna.BE_capstone.enums.EventType;
 import robertoCafagna.BE_capstone.enums.EventVisibility;
 import robertoCafagna.BE_capstone.enums.ParticipationStatus;
 
@@ -69,4 +70,8 @@ public interface EventRepository extends JpaRepository<Event, UUID>, JpaSpecific
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Event e SET e.route = null WHERE e.route.id = :routeId")
     void clearRouteReference(@Param("routeId") UUID routeId);
+
+    long countByParentEventIsNull();
+
+    long countByTypeAndParentEventIsNull(EventType type);
 }

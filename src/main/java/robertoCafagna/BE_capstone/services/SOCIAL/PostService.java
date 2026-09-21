@@ -3,6 +3,7 @@ package robertoCafagna.BE_capstone.services.SOCIAL;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,10 +17,7 @@ import robertoCafagna.BE_capstone.Interface.PostCommentCount;
 import robertoCafagna.BE_capstone.Interface.PostLikeCount;
 import robertoCafagna.BE_capstone.config.EventAccessChecker;
 import robertoCafagna.BE_capstone.entities.*;
-import robertoCafagna.BE_capstone.enums.EventType;
-import robertoCafagna.BE_capstone.enums.FeedType;
-import robertoCafagna.BE_capstone.enums.MediaType;
-import robertoCafagna.BE_capstone.enums.WidgetType;
+import robertoCafagna.BE_capstone.enums.*;
 import robertoCafagna.BE_capstone.exceptions.BadRequestException;
 import robertoCafagna.BE_capstone.exceptions.ForbiddenException;
 import robertoCafagna.BE_capstone.exceptions.NotFoundException;
@@ -30,9 +28,12 @@ import robertoCafagna.BE_capstone.repositories.RIDE.RouteRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.LikeRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.PostCommentRepository;
 import robertoCafagna.BE_capstone.repositories.SOCIAL.PostRepository;
+import robertoCafagna.BE_capstone.repositories.SOCIAL.ReportRepository;
 import robertoCafagna.BE_capstone.services.CloudinaryService;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -42,6 +43,9 @@ import java.util.stream.Collectors;
 public class PostService {
 
 
+    private static final int EXPLORE_CANDIDATE_WINDOW_DAYS = 14;
+    private static final int EXPLORE_CANDIDATE_POOL_SIZE = 300;
+    private static final int EXPLORE_MIN_GAP_BETWEEN_SAME_AUTHOR = 3;
     private final PostRepository postRepository;
     private final EventRepository eventRepository;
     private final RideRepository rideRepository;
@@ -51,7 +55,8 @@ public class PostService {
     private final EventAccessChecker eventAccessChecker;
     private final VehicleRepository vehicleRepository;
     private final RouteRepository routeRepository;
-
+    private final ReportRepository reportRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public PostResponseDTO createPost(User currentUser, CreatePostRequestDTO body, List<MultipartFile> files) {
@@ -124,12 +129,90 @@ public class PostService {
     }
 
     public Page<PostResponseDTO> getFeed(User currentUser, FeedType type, int page, int size) {
-        Pageable pageable = buildPageable(page, size);
-        Page<Post> posts = switch (type) {
-            case FOLLOWING -> postRepository.findFollowingFeed(currentUser.getId(), pageable);
-            case EXPLORE -> postRepository.findExploreFeed(currentUser.getId(), pageable);
-        };
+        if (size <= 0 || size > 50) size = 20;
+        if (page < 0) page = 0;
+
+        if (type == FeedType.EXPLORE) {
+            return getRankedExploreFeed(currentUser, page, size);
+        }
+
+        Page<Post> posts = postRepository.findFollowingFeed(currentUser.getId(), PageRequest.of(page, size));
         return toDTOPage(currentUser, posts);
+    }
+
+    private Page<PostResponseDTO> getRankedExploreFeed(User currentUser, int page, int size) {
+        LocalDateTime since = LocalDateTime.now().minusDays(EXPLORE_CANDIDATE_WINDOW_DAYS);
+        List<Post> candidates = postRepository.findExploreCandidates(
+                currentUser.getId(), since, PageRequest.of(0, EXPLORE_CANDIDATE_POOL_SIZE)
+        );
+
+        if (candidates.isEmpty()) {
+            return Page.empty(PageRequest.of(page, size));
+        }
+
+        List<UUID> postIds = candidates.stream().map(Post::getId).toList();
+        Map<UUID, Long> likeCounts = likeRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(PostLikeCount::getPostId, PostLikeCount::getCount));
+        Map<UUID, Long> commentCounts = postCommentRepository.countByPostIdIn(postIds).stream()
+                .collect(Collectors.toMap(PostCommentCount::getPostId, PostCommentCount::getCount));
+        Set<UUID> likedPostIds = new HashSet<>(likeRepository.findLikedPostIds(currentUser.getId(), postIds));
+
+        List<Post> scored = candidates.stream()
+                .sorted(Comparator.comparingDouble((Post p) ->
+                        computeExploreScore(p, likeCounts.getOrDefault(p.getId(), 0L), commentCounts.getOrDefault(p.getId(), 0L))
+                ).reversed())
+                .toList();
+
+        List<Post> ranked = applyAuthorSpacing(scored);
+
+        int from = Math.min(page * size, ranked.size());
+        int to = Math.min(from + size, ranked.size());
+        List<PostResponseDTO> content = ranked.subList(from, to).stream()
+                .map(post -> toDTO(
+                        currentUser, post,
+                        likeCounts.getOrDefault(post.getId(), 0L),
+                        commentCounts.getOrDefault(post.getId(), 0L),
+                        likedPostIds.contains(post.getId())
+                ))
+                .toList();
+
+        return new PageImpl<>(content, PageRequest.of(page, size), ranked.size());
+    }
+
+    private double computeExploreScore(Post post, long likeCount, long commentCount) {
+        long hoursSincePosted = Duration.between(post.getCreatedAt(), LocalDateTime.now()).toHours();
+        double engagement = likeCount * 1.0 + commentCount * 2.0;
+        return engagement / Math.pow(hoursSincePosted + 2, 1.5);
+    }
+
+    private List<Post> applyAuthorSpacing(List<Post> ranked) {
+        List<Post> result = new ArrayList<>();
+        List<Post> pending = new ArrayList<>(ranked);
+
+        while (!pending.isEmpty()) {
+            int chosenIndex = -1;
+            for (int i = 0; i < pending.size(); i++) {
+                Post candidate = pending.get(i);
+                boolean tooClose = false;
+                int start = Math.max(0, result.size() - EXPLORE_MIN_GAP_BETWEEN_SAME_AUTHOR);
+                for (int j = start; j < result.size(); j++) {
+                    if (result.get(j).getUser().getId().equals(candidate.getUser().getId())) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+                if (!tooClose) {
+                    chosenIndex = i;
+                    break;
+                }
+            }
+            // se ogni candidato rimasto è "troppo vicino" al proprio stesso autore
+            // (capita solo con pochissimi autori distinti), prendo comunque il primo
+            if (chosenIndex == -1) chosenIndex = 0;
+
+            result.add(pending.remove(chosenIndex));
+        }
+        return result;
     }
 
     public Page<PostResponseDTO> getUserPosts(User currentUser, UUID userId, int page, int size) {
@@ -151,20 +234,30 @@ public class PostService {
         if (!post.getUser().getId().equals(currentUser.getId())) {
             throw new ForbiddenException("Non sei l'autore di questo post");
         }
+        deletePostInternal(post);
+        log.info("Utente {} ha eliminato il post {}", currentUser.getId(), postId);
+    }
 
+    @Transactional
+    public void adminDeletePost(UUID postId, String reason) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new NotFoundException("Post non trovato"));
+        User author = post.getUser();
+        deletePostInternal(post);
+        reportRepository.deleteByTargetTypeAndTargetId(ReportTargetType.POST, postId);
+        notificationService.notifyContentRemovedByAdmin(author, "post", reason);
+        log.info("Admin ha eliminato il post {} (motivo: {})", postId, reason);
+    }
+
+    private void deletePostInternal(Post post) {
+        UUID postId = post.getId();
         List<String> publicIds = post.getMedia().stream()
                 .map(PostMedia::getMediaPublicId)
                 .filter(Objects::nonNull)
                 .toList();
 
-
-        // 1. Elimino i like
         likeRepository.deleteByPostId(postId);
-
-        // 2. Elimino i commenti
         postCommentRepository.deleteByPostId(postId);
-
-        // 3. Elimino il post
         postRepository.delete(post);
 
         for (String publicId : publicIds) {
@@ -174,7 +267,6 @@ public class PostService {
                 log.warn("Impossibile cancellare l'immagine {} del post {}", publicId, postId, e);
             }
         }
-        log.info("Utente {} ha eliminato il post {}", currentUser.getId(), postId);
     }
 
     // --- risoluzione riferimenti opzionali ---

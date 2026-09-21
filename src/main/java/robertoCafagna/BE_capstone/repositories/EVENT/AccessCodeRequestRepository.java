@@ -14,4 +14,6 @@ public interface AccessCodeRequestRepository extends JpaRepository<AccessCodeReq
     Optional<AccessCodeRequest> findByEventIdAndRequesterId(UUID eventId, UUID requesterId);
 
     List<AccessCodeRequest> findByEventIdAndStatus(UUID eventId, AccessRequestStatus status);
+
+    List<AccessCodeRequest> findByRequesterId(UUID requesterId);
 }

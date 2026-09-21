@@ -13,6 +13,8 @@ import java.util.UUID;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
+    void deleteByUserId(UUID userId);
+
     Page<Notification> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 
     Optional<Notification> findByIdAndUserId(UUID id, UUID userId);

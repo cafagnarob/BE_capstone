@@ -89,4 +89,46 @@ public class MailService {
         return "Fino al " + yearEnd;
 
     }
+
+
+    public void sendAccountDeletedByAdminEmail(String to, String username, String reason) {
+        String html = """
+                <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+                    <h2>Il tuo account è stato eliminato</h2>
+                    <p>Ciao %s,</p>
+                    <p>Il tuo account su FlowRides è stato eliminato da un amministratore per il seguente motivo:</p>
+                    <p style="background:#f4f4f4;padding:12px;border-radius:6px;">%s</p>
+                    <p>I tuoi dati privati sono stati cancellati. I contenuti pubblici che avevi condiviso restano visibili ad altri utenti, ma senza più alcun collegamento alla tua identità.</p>
+                    <p>Se ritieni che questa decisione sia un errore, contattaci rispondendo a questa email.</p>
+                </div>
+                """.formatted(username, reason);
+        sendHtmlEmail(to, "Il tuo account FlowRides è stato eliminato", html);
+    }
+
+
+    public void sendAccountDeactivatedByAdminEmail(String to, String username, String reason) {
+        String html = """
+                <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+                    <h2>Il tuo account è stato disattivato</h2>
+                    <p>Ciao %s,</p>
+                    <p>Il tuo account su FlowRides è stato disattivato da un amministratore.</p>
+                    <p><strong>Motivo:</strong></p>
+                    <p style="background:#f4f4f4;padding:12px;border-radius:6px;">%s</p>
+                    <p>Non potrai accedere finché l'account non verrà riattivato. Se ritieni che questa decisione sia un errore, contattaci rispondendo a questa email.</p>
+                </div>
+                """.formatted(username, reason != null && !reason.isBlank() ? reason : "Nessun motivo specificato");
+        sendHtmlEmail(to, "Il tuo account FlowRides è stato disattivato", html);
+    }
+
+
+    public void sendAccountReactivatedByAdminEmail(String to, String username) {
+        String html = """
+                <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto;">
+                    <h2>Il tuo account è stato riattivato</h2>
+                    <p>Ciao %s,</p>
+                    <p>Buone notizie: il tuo account su FlowRides è stato riattivato da un amministratore. Puoi accedere di nuovo con le tue credenziali.</p>
+                </div>
+                """.formatted(username);
+        sendHtmlEmail(to, "Il tuo account FlowRides è stato riattivato", html);
+    }
 }
